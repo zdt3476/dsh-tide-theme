@@ -1,20 +1,20 @@
-# 潮汐玻璃 · Tide Glass
+# 潮汐主题 · Tide Theme
 
 <p align="center">
-  <img src="docs/images/icon.png" width="96" height="96" alt="Tide Glass icon" style="border-radius: 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+  <img src="docs/images/icon.png" width="96" height="96" alt="Tide Theme icon" style="border-radius: 22px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
 </p>
 
 <p align="center">
-  <strong>冰蓝玻璃、真实指标、零噪音 —— 给 DeepSeek Harness 的主题与工作流增强套件</strong>
+  <strong>深海潮汐蓝、真实指标、零噪音 —— 给 DeepSeek Harness 的主题与工作流增强套件</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dsh-tide-theme"><img src="https://img.shields.io/npm/v/dsh-tide-theme?color=2563eb&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/dsh-tide-theme"><img src="https://img.shields.io/npm/v/dsh-tide-theme?color=1d4ed8&label=npm" alt="npm version" /></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://img.shields.io/badge/dsh--market-verified-16a34a" alt="dsh market" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
 </p>
 
-> **关于名字**：本插件原名 `dsh-simplify-theme`（极简主题），主题演化为冰蓝玻璃材质后更名为 **`dsh-tide-theme`**（潮汐玻璃 · Tide Glass）。
+> **关于名字**：本插件原名 `dsh-simplify-theme`（极简主题），后更名为 **`dsh-tide-theme`**（潮汐主题 · Tide Theme）。
 > 如果你是从旧包升级过来的，请先卸载旧包再安装新包；本地配置需重新设置一次（存储键已随包名更新）。
 
 ---
@@ -22,26 +22,65 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/banner-dark.png" />
-    <img src="docs/images/banner-light.png" alt="潮汐玻璃功能总览" style="border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); width: 100%; max-width: 960px;" />
+    <img src="docs/images/banner-light.png" alt="潮汐主题功能总览" style="border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); width: 100%; max-width: 960px;" />
   </picture>
 </p>
 
-Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层级，并保留宿主的对话、导航及分屏结构。
+Tide Theme 为 DSH 提供深海潮汐蓝的表面体系、清晰的文字层级与克制的信息密度，并完整保留宿主的对话、导航及分屏结构。
 
 本文的功能截图由插件组件在隔离浏览器中使用演示数据渲染，用于展示组件样式；它们不代表当前用户会话或完整 DSH 应用的实际界面。真实宿主的布局与交互另外通过宿主结构契约测试验证。
 
 ---
 
+## 设计基线
+
+主题遵循一套固定的设计契约，而不是逐处调色。改动前先读 `docs/ui-design-contract.md`。
+
+### 配色（6-3-1，单一 Token 来源）
+
+| 占比 | 角色 | 暗色（深海暗潮） | 亮色（潮平岸阔） |
+|---|---|---|---|
+| **60%** | 主画布 / 侧栏 / 对话视口 | `#0b121e` · `#0e1726` | `#f5f8fc` · `#edf3fa` |
+| **30%** | 卡片 Surface / 浮层 / 发丝描边 | `#142034` · `rgba(96,165,250,.16)` | `#ffffff` · `rgba(37,99,235,.12)` |
+| **10%** | 唯一强调色（潮汐蓝） | `#38bdf8` / `#60a5fa` | `#1d4ed8` / `#2563eb` |
+
+- **禁用纯黑 `#000000`**：底色取自深海蓝灰，最暗处仍保留色相。
+- **单一强调色、饱和度克制**：状态色仅按语义扩展（成功 `#047857` / 警戒 `#b45309` / 失败 `#dc2626`），不引入第二主色。
+- **无霓虹辉光、无蓝紫渐变**：不使用 `radial-gradient` 彩色光斑、`drop-shadow` 发光或彩色 `box-shadow: 0 0 Npx`；层次靠 0.5px 发丝边、明度台阶与融入背景的漫反射柔影建立。
+- **对比度达标**：正文与辅助文字满足 WCAG AA（≥ 4.5:1），主标题与核心读数按 AAA（≥ 7:1）取值。
+
+### 字阶与读数
+
+| 层级 | 字号 / 行高 | 用途 |
+|---|---|---|
+| KPI 读数 | 16px / 20px | 看板大指标（TPS、TTFT、耗时） |
+| HUD 读数 | 13px / 20px | 底栏常驻指标 |
+| 正文 | 12px / 16px | 常规信息与选项 |
+| 辅助说明 | 11px / 14px | 提示、单位、时间戳 |
+
+- **度量读数一律等宽**：TPS、Token、耗时、百分比使用 `Geist Mono` → `JetBrains Mono` → `ui-monospace` 的字体栈，并开启 `font-variant-numeric: tabular-nums` 与 `font-feature-settings: "tnum" 1`，数值刷新时零抖动。
+- **只使用整数像素字号**：不使用 10.5px / 11.5px 一类半像素值，避免 1x 屏子像素发虚。
+- **不引入网络字体**：界面文本走宿主系统无衬线字体。
+
+### 间距与状态
+
+- **8pt 步长**：4px（图标与读数）/ 8px（HUD 单元格）/ 12px（卡片网格）/ 16px（浮层内衬）/ 24px（大区块）。
+- **状态完整**：加载中（与正式尺寸 1:1 的骨架条）、空数据、错误/重试、超长文本截断（`min-width: 0` + `ellipsis`）、Hover / Active / Focus-visible / Disabled 均有独立实现。
+- **焦点可见**：所有可聚焦控件（标签页、开关、步进器、重置按钮、停止按钮）均提供 2px 语义焦点环。
+- **视口防御**：看板浮层限制 `max-height: min(560px, calc(100vh - 48px))` 并可内部滚动，矮视口不会截断内容。
+
+---
+
 ## 主题材质开关
 
-底栏 HUD、用量看板与代委派图这三个自绘组件，**统一跟随插件设置里的主题材质开关**：
+底栏 HUD、用量看板与委派图这三个自绘组件，**统一跟随插件设置里的主题材质开关**：
 
 | 开关 | 三个组件的外观 | 预览 |
 |---|---|---|
-| **开启**（默认） | 套用潮汐玻璃材质：径向微光、定向双层投影、0.5px 发丝描边、彩色图标与连线辉光 | 见下方各功能的「玻璃」图 |
+| **开启**（默认） | 套用潮汐材质：深海哑光微透表面、0.5px 发丝描边、自然漫反射柔影、克制的语义状态点 | 见下方各功能的「主题」图 |
 | **关闭** | 全部回落到 DSH 原生 token 表面（`--dsw-specific-menu` / `--dsw-alias-bg-layer-*` / `--dsw-elevation-*`），与宿主外观完全一致 | 见下方各功能的「原生」图 |
 
-开关位于 **设置 → 插件 → 潮汐玻璃主题 → 潮汐玻璃主题材质**，实时生效、无需重启。明暗两套配色各自成立，切换深浅色不会冷暖混用。
+开关位于 **设置 → 插件 → 潮汐主题 → 潮汐主题材质**，实时生效、无需重启。明暗两套配色各自成立，切换深浅色不会冷暖混用。
 
 ---
 
@@ -54,7 +93,7 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/current-dock-dark.png" />
-    <img src="docs/images/current-dock-light.png" alt="底栏性能 HUD 与展开的用量看板（玻璃材质）" style="border-radius: 10px; max-width: 620px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);" />
+    <img src="docs/images/current-dock-light.png" alt="底栏性能 HUD 与展开的用量看板（潮汐主题材质）" style="border-radius: 10px; max-width: 620px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);" />
   </picture>
 </p>
 
@@ -70,10 +109,11 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 </details>
 
 - **单行常驻 HUD**：会话规模、上下文容量、真实端到端 TPS、缓存命中率、模型累计耗时五项一行排布，形制对齐宿主原生 TodoPanel（36px 高、`radius-lg` 圆角）。窄屏按 760px / 640px 两级断点自动收窄，绝不截断读数。
+- **加载态不突跳**：数据尚未就绪时渲染与正式高度一致的骨架条，数据到达后原位替换，不产生累积布局位移。
 - **严格计入首字延迟（TTFT）的真实 TPS**：原生口径只算纯解码时间（会出现 200+ t/s 的虚高值）；本插件把网络往返与推理思考一并计入，还原真实生成速率。
-- **上下文容量三档语义色**：≤50% 安全绿、50–75% 提醒橙、>75% 警戒红，进度条与徽章同步换色。
+- **上下文容量三档语义色**：≤50% 安全绿、50–75% 提醒琥珀、>75% 警戒红，进度条与徽章同步换色。
 - **上下文压缩即时刷新**：接入 `projectedTokens` 与 `contextBreakdown`，压缩发生后容量读数立刻下降，不会停在旧采样值。
-- **点击展开用量看板**：系统/工具/消息三段式容量条、四张性能 KPI 卡、Token 计费构成表与会话耗时拆解。浮窗**水平居中于 HUD、底边严丝合缝贴住 HUD 顶边**，空间不足时自动翻转到下方或贴视口底。
+- **点击展开用量看板**：系统/工具/消息三段式容量条、四张性能 KPI 卡、Token 计费构成表与会话耗时拆解。浮窗**水平居中于 HUD、底边严丝合缝贴住 HUD 顶边**，空间不足时自动翻转到下方或贴视口底；内容超高时浮窗内部滚动。
 
 ---
 
@@ -84,7 +124,7 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/current-delegation-dark.png" />
-    <img src="docs/images/current-delegation-light.png" alt="Agent Graph 子代理拓扑（玻璃材质）" style="border-radius: 10px; max-width: 760px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);" />
+    <img src="docs/images/current-delegation-light.png" alt="Agent Graph 子代理拓扑（潮汐主题材质）" style="border-radius: 10px; max-width: 760px; box-shadow: 0 8px 30px rgba(0,0,0,0.35);" />
   </picture>
 </p>
 
@@ -99,9 +139,9 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 </p>
 </details>
 
-- **弧形扇出连线**：SVG 按真实几何绘制——外侧分支从枢纽侧缘引出，内侧从底部引出，以贝塞尔曲线落到卡片顶边；有子代理运行时虚线流动并带蓝色辉光。卡片换行时只画主干，避免连线穿过上一行卡片。
+- **弧形扇出连线**：SVG 按真实几何绘制——外侧分支从枢纽侧缘引出，内侧从底部引出，以贝塞尔曲线落到卡片顶边；有子代理运行时用 1px 语义色导线配合虚线流动表示活动，不加外发光。卡片换行时只画主干，避免连线穿过上一行卡片。
 - **横向 Agent 卡片阵列**：网格按可用容器宽度排布，每张卡片保留标题、模型、状态与实际步骤数；步骤数不代表已完成的任务清单。
-- **四色职能映射**：按标题关键词把子代理归到 Research（紫）/ Code（绿）/ Analyze（橙）/ 其它（蓝），图标、渐变底与发光描边同步换色；关闭主题材质后统一回落为中性图标。
+- **四色职能映射**：按标题关键词把子代理归到 Research（天青）/ Code（绿）/ Analyze（琥珀）/ 其它（蓝），图标以单色前景 + 同色低透明度底呈现，不整卡套艳色渐变；关闭主题材质后统一回落为中性图标。
 - **多轮次递增时序防冲突**：会话级单调递增编号（第 1 次委派、第 2 次委派…），配合行级粘性绑定（`claimedByRow`），杜绝跨轮次编号重置或盗用旧图。
 - **宁可缺省也不张冠李戴**：无法确定某个工具行对应哪个子会话时**不显示**该节点（失败或仍在排队的 `spawn_teammate` 调用不会凭空占位），而不是按顺序猜一个。未匹配的错误本身仍原样留在原生工具行里。
 - **交互**：点击卡片打开对应子会话；支持取消的运行中卡片提供独立「停止」按钮，停止操作不触发会话跳转。
@@ -120,8 +160,8 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 </p>
 
 - **小节标头**：置顶与普通文件夹分立为 `📌 置顶 (N)` 与 `工作区 (M)` 两小节，标头挂在工作区列表容器内部（不会漂到搜索框上方）。
-- **金星标识**：置顶项带金色 `★` 前缀与投影，与普通项之间用发丝虚线隔开。
-- **选中发光侧条**：当前工作区左侧出现 3px 品牌蓝发光竖条。
+- **置顶标识**：置顶项带语义琥珀色 `★` 前缀，与普通项之间用发丝虚线隔开。
+- **选中侧条**：当前工作区左侧出现 3px 品牌蓝实心竖条，无外发光。
 - **未归档 / 归档分页**：双标签页切换活跃状态，与宿主视图状态双向同步。
 - **实时筛选框**：即输即搜，命中会话时保留其工作区组头。
 - **数量上限独立可调**：置顶与未置顶的折叠上限分别配置（置顶设为 0 表示不限，全部常驻）。
@@ -139,11 +179,14 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
   </picture>
 </p>
 
+- 设置卡片套用与浮层同源的潮汐 Surface，明暗两套各自成立。
+- 分组标题、各项说明、开关与步进器均复用语义 token，无硬编码色值。
+
 ---
 
 ### 5. 输入区控件与体验细节
 
-- **模型与思考等级控件**：输入框左下方提供供应商分类的模型面板与平滑思考等级（Reasoning Effort）滑块。列表按供应商分组、带粘性组头，模型名后标注可用档位数：
+- **模型与思考等级控件**：输入框左下方提供供应商分类的模型面板与平滑思考等级（Reasoning Effort）滑块。列表按供应商分组、带粘性组头，模型名后标注可用档位数；超长模型名单行截断并附完整 Tooltip：
 
 <p align="center">
   <picture>
@@ -162,7 +205,7 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 
 ### 方式 1：通过官方插件市场（推荐）
 
-在 DSH 插件市场搜索 **`dsh-tide-theme`**（显示名「潮汐玻璃」），点击安装后重启客户端。
+在 DSH 插件市场搜索 **`dsh-tide-theme`**（显示名「潮汐主题」），点击安装后重启客户端。
 
 ### 方式 2：通过命令行安装
 
@@ -188,11 +231,11 @@ dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/relea
 
 ```sh
 pnpm install
-pnpm test        # TypeScript 类型检查 + Vitest 单元测试 (103 tests)
+pnpm test        # TypeScript 类型检查 + Vitest 单元测试（110 tests）
 pnpm build       # 编译产出 lib/index.js (Host) 与 lib/client.js (Client)
 pnpm check       # test + build 全量流水线检查
 
-# 浏览器契约测试（真实 Chromium，45 项）
+# 浏览器契约测试（真实 Chromium，53 项）
 # 注意：必须逐个列出测试文件。tests/client/ 下还有 dock-stats-fixture.mjs 等夹具，
 # 用 glob 会把夹具当成测试文件从而误报失败。
 PLAYWRIGHT_MODULE=<playwright/index.mjs> CHROMIUM_EXECUTABLE=<chromium> \
@@ -223,18 +266,20 @@ PLAYWRIGHT_MODULE=<playwright/index.mjs> node scripts/capture-docs-screenshots.m
 ├── src/
 │   ├── client/
 │   │   ├── composer-stats.ts       # 容量占用、真实 TPS、缓存命中算法模型
-│   │   ├── dock-stats.ts           # 底栏单行 HUD 与用量看板浮窗
+│   │   ├── dock-stats.ts           # 底栏单行 HUD、骨架态与用量看板浮窗
 │   │   ├── delegation-panel.ts     # Agent Graph 拓扑、母线连线与四色卡片映射
 │   │   ├── popup.ts                # 浮窗定位（居中 + 边框贴合 + 边界翻转）
 │   │   ├── sidebar-groups.ts       # 侧栏独立小节标头、置顶排序与数量控制
 │   │   ├── sidebar-tabs.ts         # 侧栏未归档/归档分页与筛选框
 │   │   ├── plugin-config.ts        # 插件全局配置数据模型与持久化驱动
 │   │   ├── plugin-settings.ts      # 插件页可视化设置面板
-│   │   ├── tokens.ts               # 潮汐玻璃 Token 覆盖唯一定义（亮/暗成对）
+│   │   ├── tokens.ts               # 潮汐主题 Token 覆盖唯一定义（亮/暗成对）
 │   │   └── styles.ts               # 全部组件运行期样式表 + 主题材质门控层
 │   └── host/
 │       └── index.ts                # Host 插件规范声明
-├── docs/images/                    # 真实渲染的明暗 × 主题开关四态截图
+├── docs/
+│   ├── images/                     # 真实渲染的明暗 × 主题开关四态截图
+│   └── ui-design-contract.md       # 布局、配色、字阶与验收矩阵契约
 ├── scripts/capture-docs-screenshots.mjs  # 用插件组件重出全部截图
 ├── tests/client/native-tokens.json # 宿主原生 token 基准（用于关态截图与契约比对）
 └── icon.png                        # 256x256 专属应用图标
