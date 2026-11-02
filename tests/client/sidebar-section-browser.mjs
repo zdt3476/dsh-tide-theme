@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 
@@ -14,7 +14,7 @@ const { chromium } = process.env.PLAYWRIGHT_MODULE
 let server, browser, origin
 before(async () => {
   server = await createServer({
-    root: '/Users/zdt/Code/dsh/dsh-simplify-theme',
+    root: fileURLToPath(new URL('../..', import.meta.url)),
     configFile: false,
     server: { host: '127.0.0.1', port: 0 },
     plugins: [{
@@ -88,7 +88,7 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
 
     // 设置置顶持久化项（4 个工作区置顶）
     localStorage.setItem('dsh-simplify-theme.pinned-workspaces', JSON.stringify([
-      'default', 'dsh-simplify-theme', 'personal-hub', 'token-metrics'
+      'default', 'dsh-simplify-theme', 'web-dashboard', 'api-service'
     ]))
 
     // 模拟 DSH 真实侧栏 DOM 结构
@@ -115,8 +115,8 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
         <div class="workspace-list-container">
           <div><span><div data-row-key="workspace:default" style="padding:6px 8px; font-size:13px;">📁 default</div></span></div>
           <div><span><div data-row-key="workspace:dsh-simplify-theme" style="padding:6px 8px; font-size:13px;">📁 dsh-simplify-theme</div></span></div>
-          <div><span><div data-row-key="workspace:personal-hub" style="padding:6px 8px; font-size:13px;">📁 personal-hub</div></span></div>
-          <div><span><div data-row-key="workspace:token-metrics" style="padding:6px 8px; font-size:13px;">📁 token-metrics</div></span></div>
+          <div><span><div data-row-key="workspace:web-dashboard" style="padding:6px 8px; font-size:13px;">📁 web-dashboard</div></span></div>
+          <div><span><div data-row-key="workspace:api-service" style="padding:6px 8px; font-size:13px;">📁 api-service</div></span></div>
           <div><span><div data-row-key="workspace:server" style="padding:6px 8px; font-size:13px;">📁 server</div></span></div>
           <div><span><div data-row-key="workspace:code" style="padding:6px 8px; font-size:13px;">📁 code</div></span></div>
         </div>
@@ -126,8 +126,8 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
     const workspaces = [
       { workspaceId: 'default', sessionIds: [] },
       { workspaceId: 'dsh-simplify-theme', sessionIds: [] },
-      { workspaceId: 'personal-hub', sessionIds: [] },
-      { workspaceId: 'token-metrics', sessionIds: [] },
+      { workspaceId: 'web-dashboard', sessionIds: [] },
+      { workspaceId: 'api-service', sessionIds: [] },
       { workspaceId: 'server', sessionIds: [] },
       { workspaceId: 'code', sessionIds: [] }
     ]

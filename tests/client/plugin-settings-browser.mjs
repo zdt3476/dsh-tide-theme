@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 
@@ -14,7 +14,7 @@ const { chromium } = process.env.PLAYWRIGHT_MODULE
 let server, browser, origin
 before(async () => {
   server = await createServer({
-    root: '/Users/zdt/Code/dsh/dsh-simplify-theme',
+    root: fileURLToPath(new URL('../..', import.meta.url)),
     configFile: false,
     server: { host: '127.0.0.1', port: 0 },
     plugins: [{

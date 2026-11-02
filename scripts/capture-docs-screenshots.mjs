@@ -46,10 +46,10 @@ const SIDEBAR_MARKUP = `
       ${[
         ['default', 3],
         ['dsh-simplify-theme', 5],
-        ['personal-hub', 2],
-        ['token-metrics', 1],
-        ['backend-services', 4],
-        ['mobile-client', 0]
+        ['web-dashboard', 2],
+        ['api-service', 1],
+        ['design-system', 4],
+        ['docs-site', 0]
       ].map(([id, count]) => `<div><span><div data-row-key="workspace:${id}" style="display:flex;align-items:center;padding:5px 8px;border-radius:6px;color:var(--dsw-alias-label-secondary);font-size:12.5px;">${id}</div></span>${Array.from({ length: count }, (_, i) => `<div data-row-key="session:${id}-${i}" style="display:none;">会话 ${i + 1}</div>`).join('')}</div>`).join('')}
     </div>
   </div>
@@ -171,13 +171,13 @@ async function captureOne(mode, themeOn) {
     document.head.append(style)
 
     localStorage.setItem('dsh-simplify-theme.pinned-workspaces',
-      JSON.stringify(['default', 'dsh-simplify-theme', 'personal-hub', 'token-metrics']))
+      JSON.stringify(['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service']))
 
     const mount = document.getElementById('mount')
     mount.style.padding = '28px'
     mount.innerHTML = markup
 
-    const workspaces = ['default', 'dsh-simplify-theme', 'personal-hub', 'token-metrics', 'backend-services', 'mobile-client']
+    const workspaces = ['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
       .map((workspaceId) => ({ workspaceId, sessionIds: [] }))
 
     mountSidebarGroups({
@@ -483,8 +483,8 @@ async function captureOne(mode, themeOn) {
 
     // 侧栏
     localStorage.setItem('dsh-simplify-theme.pinned-workspaces',
-      JSON.stringify(['default', 'dsh-simplify-theme', 'personal-hub', 'token-metrics']))
-    const workspaces = ['default', 'dsh-simplify-theme', 'personal-hub', 'token-metrics', 'backend-services', 'mobile-client']
+      JSON.stringify(['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service']))
+    const workspaces = ['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
       .map((workspaceId) => ({ workspaceId, sessionIds: [] }))
     mountSidebarGroups({
       locale,

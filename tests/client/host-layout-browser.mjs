@@ -4,23 +4,22 @@ import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const vitePath = require.resolve('vite', { paths: [require.resolve('vitest/package.json')] })
 const { createServer } = await import(pathToFileURL(vitePath).href)
-const playwrightPath = process.env.PLAYWRIGHT_MODULE
-  ? resolve(process.env.PLAYWRIGHT_MODULE)
-  : '/Users/zdt/Code/games/tetris-mania/node_modules/playwright/index.mjs'
-const { chromium } = await import(pathToFileURL(playwrightPath).href)
+const { chromium } = process.env.PLAYWRIGHT_MODULE
+  ? await import(pathToFileURL(resolve(process.env.PLAYWRIGHT_MODULE)).href)
+  : await import('playwright')
 
 const chromiumExec = process.env.CHROMIUM_EXECUTABLE
-  ?? '/Users/zdt/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell'
 
 let server, browser, origin
 
 before(async () => {
   server = await createServer({
+    root: fileURLToPath(new URL('../..', import.meta.url)),
     configFile: false,
     server: { host: '127.0.0.1', port: 0 },
     plugins: [{

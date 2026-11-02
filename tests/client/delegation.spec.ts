@@ -136,7 +136,7 @@ describe('per-delegation matching', () => {
     claimed.add(child1.id)
 
     // 第 2 行：只有泛化提示（无 UUID 且无描述）。真实场景里这可能是任何回合的
-    // spawn/subagent 行，盲目时序认领会把卡片错绑到别的子代理（session-91287a0d 实测），
+    // spawn/subagent 行，盲目时序认领会把卡片错绑到别的子代理（真实会话实测复现），
     // 所以宁缺毋滥：匹配不到就返回 undefined。
     const row2Text = '子智能体 运行中'
     expect(matchSubagentId(row2Text, sessionStore, 'session-root', claimed, [child1.id, child2.id, child3.id]))
