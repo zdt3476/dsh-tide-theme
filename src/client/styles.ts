@@ -250,10 +250,20 @@ body[data-dsh-tide-theme] ::selection {
   display: inline-flex;
   align-items: center;
   min-width: 0;
+  /* 座位自身必须可收缩：只给内含 pill 设 min-width:0 不够——inline-flex 父级仍被
+   * 内容撑开，窄容器下会把 composer 行顶出横向滚动。 */
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 
 /* 座位里的原生按钮与插件按钮同规格：28px 高、13px 字号、透明底。 */
-[data-dsh-tide-seat] > [data-dsh-tide-dock-root] { display: inline-flex; align-items: center; gap: 2px; }
+[data-dsh-tide-seat] > [data-dsh-tide-dock-root] {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
 
 /* 两侧等分：中间统计簇才能以卡片中心对齐（不等分时会被宽的一侧挤偏） */
 [data-dsh-tide-dock-left] {
@@ -840,7 +850,8 @@ body[data-dsh-tide-theme] .dsh-tide-stats-detail-list {
   font-size: 13px;
   line-height: 20px;
   min-width: 0;
-  max-width: 260px;
+  /* 与 [data-dsh-tide-control='model'] 的上限保持一致，避免两处规则互相打架。 */
+  max-width: 280px;
 }
 
 [data-dsh-tide-pill]:hover:not(:disabled) {
@@ -2106,7 +2117,11 @@ body[data-dsh-tide-theme] [data-slot='sidebar.workspaces'] [data-row-key^='works
   user-select: none;
 }
 [data-dsh-tide-control='effort'] { flex: none; }
-[data-dsh-tide-control='model'] { max-width: 240px; }
+/* 「供应商 / 模型」常见组合（如 WorkBuddy / Deepseek-V4.1-Flash）自然宽约 244px，
+ * 240px 的上限会差 4px 触发省略号，让唯一的截断控件显得与同行其他控件不协调。
+ * 宽屏取 280px 覆盖常见标签；窄屏按视口收紧上限（见文件末尾的窄屏断点），
+ * 超长名仍由 ellipsis 兜底，三种情况都不会撑破 composer 行。 */
+[data-dsh-tide-control='model'] { max-width: 280px; flex: 0 1 auto; }
 
 [data-dsh-tide-filter] {
   appearance: none;
@@ -2750,5 +2765,19 @@ body:not([data-ds-dark-theme]) .subagent-active-chip[data-state='unknown'] {
 body:not([data-ds-dark-theme]) [data-dsh-tide-pill][aria-expanded='true'],
 body:not([data-ds-dark-theme]) [data-dsh-tide-pill][aria-expanded='true']:hover:not(:disabled) {
   color: var(--dsw-alias-label-primary);
+}
+
+/* —— 窄视口：模型 pill 上限随视口收紧，保证 composer 行不产生横向溢出 ——
+ * 280px 只在宽屏需要（完整显示常见标签）；窄屏继续沿用会挤掉权限与思考等级控件。 */
+@media (max-width: 640px) {
+  [data-dsh-tide-control='model'] {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 420px) {
+  [data-dsh-tide-control='model'] {
+    max-width: 140px;
+  }
 }
 `

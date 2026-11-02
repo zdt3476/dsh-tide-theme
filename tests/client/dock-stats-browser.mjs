@@ -697,6 +697,121 @@ for (const scenario of modelLabelCases) {
   })
 }
 
+test('模型 pill 不把常见「供应商 / 模型」标签截断（宽度上限回归）', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  await page.goto(`${origin}/fixture`)
+
+  const result = await page.evaluate(async () => {
+    await import('/tests/client/dock-stats-fixture.mjs')
+    const { React, ReactDOM, UI_CSS, createModelControl } = window.testFixture
+    const style = document.createElement('style')
+    style.textContent = UI_CSS
+    document.head.append(style)
+
+    // 真实场景里最常见也最长的组合：供应商名 + 带版本号的模型名。
+    const snapshot = {
+      pending: null, status: 'ready', error: null, failures: [],
+      groups: [{ id: 'workbuddy', name: 'WorkBuddy', models: [{ id: 'v41', name: 'Deepseek-V4.1-Flash' }] }],
+      current: { provider: 'workbuddy', model: 'v41' }
+    }
+    const ModelControl = createModelControl({
+      sessionId: 'width-test',
+      directories: { directoryFor: () => ({
+        store: { subscribe: () => () => {}, getSnapshot: () => snapshot },
+        load: async () => snapshot,
+        select: async () => ({ ok: true })
+      }) },
+      shared: { h: React.createElement, hooks: React, t: (k) => k }
+    })
+    const holder = document.createElement('div')
+    holder.setAttribute('data-dsh-tide-seat', 'model')
+    document.getElementById('mount').append(holder)
+    ReactDOM.createRoot(holder).render(React.createElement(ModelControl))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
+    const label = holder.querySelector('[data-dsh-tide-pill-label]')
+    return {
+      text: label?.textContent,
+      // 横向溢出即说明被 ellipsis 截断。
+      truncated: label ? label.scrollWidth > label.clientWidth + 1 : null
+    }
+  })
+
+  assert.equal(result.text, 'WorkBuddy / Deepseek-V4.1-Flash')
+  assert.equal(result.truncated, false, '常见标签不应被截断，否则会与同行其他控件显得不协调')
+})
+
+test('模型 pill 在窄容器下收缩而非把 composer 行撑出横向溢出', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  await page.goto(`${origin}/fixture`)
+
+  const result = await page.evaluate(async () => {
+    await import('/tests/client/dock-stats-fixture.mjs')
+    const { React, ReactDOM, UI_CSS, createModelControl } = window.testFixture
+    const style = document.createElement('style')
+    style.textContent = UI_CSS
+    document.head.append(style)
+
+    // 最长的真实形态：长供应商名 + 长版本号模型名。
+    const snapshot = {
+      pending: null, status: 'ready', error: null, failures: [],
+      groups: [{ id: 'anthropic', name: 'Anthropic', models: [{ id: 'c35', name: 'claude-3-5-sonnet-20241022' }] }],
+      current: { provider: 'anthropic', model: 'c35' }
+    }
+    const ModelControl = createModelControl({
+      sessionId: 'overflow-test',
+      directories: { directoryFor: () => ({
+        store: { subscribe: () => () => {}, getSnapshot: () => snapshot },
+        load: async () => snapshot,
+        select: async () => ({ ok: true })
+      }) },
+      shared: { h: React.createElement, hooks: React, t: (k) => k }
+    })
+
+    const widths = [340, 390, 600]
+    const out = []
+    for (const width of widths) {
+      const mount = document.getElementById('mount')
+      mount.innerHTML = ''
+      const card = document.createElement('div')
+      card.setAttribute('data-composer-card', '')
+      card.style.cssText = `width:${width}px;padding:8px;box-sizing:border-box;`
+      const dock = document.createElement('div')
+      dock.setAttribute('data-composer-dock', '')
+      dock.style.cssText = 'display:flex;align-items:center;gap:6px;min-width:0;'
+      const seat = document.createElement('div')
+      seat.setAttribute('data-dsh-tide-seat', 'model')
+      dock.append(seat)
+      card.append(dock)
+      mount.append(card)
+      ReactDOM.createRoot(seat).render(React.createElement(ModelControl))
+      await new Promise((resolve) => setTimeout(resolve, 300))
+
+      const pill = card.querySelector('[data-dsh-tide-control="model"]')
+      out.push({
+        width,
+        // 卡片自身不应产生横向滚动（内容被撑破的直接信号）。
+        overflowX: card.scrollWidth > card.clientWidth + 1,
+        pillWidth: Math.round(pill.getBoundingClientRect().width),
+        insideCard: pill.getBoundingClientRect().right <= card.getBoundingClientRect().right + 1,
+        hasTitle: pill.getAttribute('title') !== null
+      })
+      seat.remove()
+    }
+    return out
+  })
+
+  for (const row of result) {
+    assert.equal(row.overflowX, false, `${row.width}px 容器下 composer 行不应出现横向溢出`)
+    assert.equal(row.insideCard, true, `${row.width}px 容器下模型 pill 不应超出卡片边界`)
+    assert.equal(row.hasTitle, true, `${row.width}px 容器下应保留完整名称的 title 提示`)
+  }
+  // 宽容器应能完整显示，窄容器则收缩，形成有意义的梯度。
+  assert.ok(result[2].pillWidth > result[0].pillWidth, '宽容器下的 pill 应比窄容器宽')
+})
+
 test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，点击内部不误关', async (t) => {
   const page = await browser.newPage()
   t.after(() => page.close())
