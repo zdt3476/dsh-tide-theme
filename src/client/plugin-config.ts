@@ -1,5 +1,5 @@
 /**
- * 潮汐玻璃主题与增强插件的可视化配置数据模型。
+ * 潮汐主题与增强插件的可视化配置数据模型。
  *
  * 用户可在插件管理页面中直接切换各项功能的启用/禁用，
  * 配置即时生效并持久化保存在 localStorage 中，无需修改配置文件或重启应用。
@@ -28,7 +28,7 @@ export interface SimplifyConfig {
   permissionControl: boolean
   /** 是否在每轮回答尾部展示该轮总耗时徽标 */
   turnDuration: boolean
-  /** 是否启用潮汐玻璃主题材质（HUD / 看板浮窗 / 委派图的冰蓝玻璃皮肤） */
+  /** 是否启用潮汐主题材质（HUD / 看板浮窗 / 委派图的深海微透皮肤） */
   themeOverrides: boolean
 }
 

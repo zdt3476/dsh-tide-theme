@@ -215,7 +215,7 @@ export function createDockStats(shared: DockShared) {
       items.push(block(
         'activity', 'is-activity',
         '会话规模',
-        iconUser, [number(model.activity.turns), unit(` 轮 · ${model.activity.steps} 步`)]
+        iconUser, [number(model.activity.turns), unit(' 轮 · '), number(model.activity.steps), unit(' 步')]
       ))
     }
 
@@ -269,6 +269,8 @@ export function createDockStats(shared: DockShared) {
       ))
     }
 
+    // 无任何指标时不渲染任何托盘：宿主 composer 行本身已有稳定高度，
+    // 硬塞骨架反而会在新会话态多出一个空壳（契约：「无投影不显示空托盘」）。
     if (items.length === 0) return null
 
     // 构建展开的看板浮层内容
@@ -338,13 +340,7 @@ export function createDockStats(shared: DockShared) {
       h('div', { className: 'dsh-tide-stats-grid' },
         h('div', { className: 'dsh-tide-stats-card' },
           h('div', { className: 'dsh-tide-stats-card-head' },
-            h('span', { className: 'dsh-tide-stats-card-k' }, '平均 TPS'),
-            h('span', { className: 'dsh-tide-eq', 'aria-hidden': 'true' },
-              h('span', { className: 'dsh-tide-eq-bar' }),
-              h('span', { className: 'dsh-tide-eq-bar' }),
-              h('span', { className: 'dsh-tide-eq-bar' }),
-              h('span', { className: 'dsh-tide-eq-bar' })
-            )
+            h('span', { className: 'dsh-tide-stats-card-k' }, '平均 TPS')
           ),
           h('strong', { className: 'dsh-tide-stats-card-v is-highlight' }, model.tps ? model.tps.label : '暂无数据'),
           h('span', { className: 'dsh-tide-stats-card-hint' }, model.tps?.rawDecodeTps ? `端到端平均，非实时瞬时（流式解码: ${model.tps.rawDecodeTps}）` : '端到端平均速率，非实时瞬时')

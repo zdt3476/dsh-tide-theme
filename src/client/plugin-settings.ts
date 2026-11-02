@@ -121,12 +121,12 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
   },
   {
     id: 'theme',
-    title: '潮汐玻璃主题',
+    title: '潮汐主题',
     items: [
       {
         key: 'themeOverrides',
-        title: '潮汐玻璃主题材质',
-        description: '为底栏 HUD、用量看板与委派图套用冰蓝玻璃材质（径向微光、定向投影、发丝描边与彩色图标）；关闭此项后这些组件回落到 DSH 原生外观。'
+        title: '潮汐主题材质',
+        description: '为底栏 HUD、用量看板与委派图套用潮汐主题材质（深海微透质感、精密发丝描边与自然漫反射柔影）；关闭此项后这些组件回落到 DSH 原生外观。'
       }
     ]
   }
@@ -164,11 +164,11 @@ export function createPluginSettings(shared: DockShared) {
       // 头部说明
       h('div', { className: 'dsh-tide-settings-head' },
         h('div', { className: 'dsh-tide-settings-title-wrap' },
-          h('h4', { className: 'dsh-tide-settings-title' }, '潮汐玻璃 · 主题与增强功能配置'),
+          h('h4', { className: 'dsh-tide-settings-title' }, '潮汐主题 · 主题与增强功能配置'),
           h('span', { className: 'dsh-tide-settings-badge' }, '即时生效')
         ),
         h('p', { className: 'dsh-tide-settings-desc' },
-          '可视化切换各项界面增强与显示模块。主题材质开启时套用冰蓝玻璃皮肤，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
+          '可视化切换各项界面增强与显示模块。主题材质开启时套用潮汐深海皮肤，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
         )
       ),
 

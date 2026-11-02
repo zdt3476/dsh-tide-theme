@@ -38,10 +38,10 @@ const SIDEBAR_MARKUP = `
       <span style="color:var(--dsw-alias-label-caption);font-size:12px;">⌕</span>
     </div>
     <div style="display:flex;gap:16px;border-bottom:1px solid var(--dsh-tide-glass-border);padding-bottom:6px;font-size:12px;margin-bottom:9px;">
-      <span style="font-weight:600;color:var(--dsh-tide-accent-text);border-bottom:2px solid var(--dsh-tide-accent-text);padding-bottom:6px;margin-bottom:-7px;">未归档</span>
+      <span style="font-weight:600;color:var(--dsw-alias-state-business-primary);border-bottom:2px solid var(--dsw-alias-state-business-primary);padding-bottom:6px;margin-bottom:-7px;">未归档</span>
       <span style="color:var(--dsw-alias-label-tertiary);">已归档</span>
     </div>
-    <input placeholder="筛选工作区或会话..." style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 9px;font-size:11.5px;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsh-tide-glass-border);border-radius:6px;background:var(--dsh-tide-glass-fill-soft);" />
+    <input placeholder="筛选工作区或会话..." style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 9px;font-size:11px;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsh-tide-card-border);border-radius:6px;background:var(--dsw-alias-interactive-bg-hover);" />
     <div class="workspace-list-container" style="display:flex;flex-direction:column;">
       ${[
         ['default', 3],
@@ -421,7 +421,7 @@ async function captureOne(mode, themeOn) {
       .b-brand h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--dsw-alias-label-primary); }
       .b-brand p { margin: 3px 0 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
       .b-tags { display: flex; gap: 8px; }
-      .b-tag { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--dsh-tide-glass-border); background: var(--dsh-tide-glass-fill-soft); color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+      .b-tag { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--dsh-tide-card-border); background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); font-size: 11px; }
       .b-stage {
         display: grid;
         grid-template-columns: 244px 1fr 1fr 330px;
@@ -432,8 +432,8 @@ async function captureOne(mode, themeOn) {
       }
       .b-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
       .b-label { display: flex; align-items: center; gap: 7px; color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
-      .b-label::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: var(--dsh-tide-accent-text); box-shadow: 0 0 7px var(--dsh-tide-accent-glow); }
-      .b-card { border: 1px solid var(--dsh-tide-glass-border); border-radius: 14px; background: var(--dsh-tide-glass-fill); backdrop-filter: blur(14px); overflow: hidden; box-sizing: border-box; }
+      .b-label::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: var(--dsw-alias-state-business-primary); }
+      .b-card { border: 1px solid var(--dsh-tide-card-border); border-radius: 14px; background: var(--dsh-tide-card-surface); overflow: hidden; box-sizing: border-box; }
       .b-scroll { overflow: hidden; }
     `
     document.head.append(style)
@@ -444,8 +444,8 @@ async function captureOne(mode, themeOn) {
         <div class="b-brand">
           <img src="/docs/images/icon.png" alt="" />
           <div>
-            <h1>潮汐玻璃 · Tide Glass</h1>
-            <p>DeepSeek Harness 冰蓝玻璃主题 · 性能 HUD · Agent Graph · 侧栏小节 · 可视化配置</p>
+            <h1>潮汐主题 · Tide Theme</h1>
+            <p>DeepSeek Harness 潮汐主题 · 性能 HUD · Agent Graph · 侧栏小节 · 可视化配置</p>
           </div>
         </div>
         <div class="b-tags">

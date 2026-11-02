@@ -101,7 +101,7 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
 
   // 1. 验证标题与分组结构
   const title = await page.locator('.dsh-tide-settings-title').textContent()
-  assert.equal(title, '潮汐玻璃 · 主题与增强功能配置')
+  assert.equal(title, '潮汐主题 · 主题与增强功能配置')
 
   const groups = page.locator('.dsh-tide-settings-card')
   assert.equal(await groups.count(), 5)
@@ -113,7 +113,7 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
     '子代理协同派发图',
     '侧栏界面增强',
     '输入框与交互控件',
-    '潮汐玻璃主题'
+    '潮汐主题'
   ])
 
   // 2. 验证9个功能开关与2个数值步进器（共11项设置，已移除可视化无效的 permissionControl）

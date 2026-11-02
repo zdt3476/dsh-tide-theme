@@ -1,4 +1,4 @@
-# 注册潮汐玻璃主题插件。
+# 注册潮汐主题插件。
 #
 # Host 侧只占一个 Loader 条目，没有运行时行为；实际效果全部由 Client 侧
 # 通过 `ctx.theme.overrideTokens()` 叠一层 token 实现，因此整套皮肤会跟随

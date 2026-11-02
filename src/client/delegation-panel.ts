@@ -295,16 +295,17 @@ const ICON_RESEARCH = ['M7 2.5a4.5 4.5 0 102.8 8l3.5 3.5 1.2-1.2-3.5-3.5A4.5 4.5
 const ICON_ANALYSIS = ['M3 13.5h10', 'M5 11.5v-3', 'M8 11.5v-6', 'M11 11.5v-4']
 const ICON_WRITER = ['M3.5 3.5h9v10h-9z', 'M6 6.5h4', 'M6 9h4']
 
-export function classifyAgentTheme(title: string): 'purple' | 'green' | 'orange' | 'blue' {
+export function classifyAgentTheme(title: string): 'cyan' | 'purple' | 'green' | 'orange' | 'blue' {
   const lower = title.toLowerCase()
-  if (lower.includes('research') || lower.includes('search') || lower.includes('搜索') || lower.includes('调研')) return 'purple'
+  if (lower.includes('research') || lower.includes('search') || lower.includes('搜索') || lower.includes('调研')) return 'cyan'
   if (lower.includes('code') || lower.includes('debug') || lower.includes('代码') || lower.includes('实现') || lower.includes('修复')) return 'green'
   if (lower.includes('analy') || lower.includes('data') || lower.includes('分析') || lower.includes('排查') || lower.includes('指标')) return 'orange'
   return 'blue'
 }
 
-function iconForTheme(theme: 'purple' | 'green' | 'orange' | 'blue'): string[] {
+function iconForTheme(theme: 'cyan' | 'purple' | 'green' | 'orange' | 'blue'): string[] {
   switch (theme) {
+    case 'cyan':
     case 'purple': return ICON_RESEARCH
     case 'green': return ICON_CODE
     case 'orange': return ICON_ANALYSIS
@@ -478,12 +479,6 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     const detail = el('div', 'subagent-topology-detail')
     const stage = el('div', 'subagent-topology-stage')
     const root = el('div', 'subagent-topology-root')
-
-    // 顶部发光微小箭头指示器：采用内联 SVG 矢量箭头代替 Unicode 字符
-    const topArrow = el('span', 'subagent-orchestrator-arrow')
-    topArrow.setAttribute('aria-hidden', 'true')
-    topArrow.append(icon(['M8 12.5V3.5', 'M4.5 7L8 3.5 11.5 7'], 11))
-    root.append(topArrow)
 
     const rootIcon = el('span', 'subagent-topology-root-icon')
     rootIcon.setAttribute('aria-hidden', 'true')

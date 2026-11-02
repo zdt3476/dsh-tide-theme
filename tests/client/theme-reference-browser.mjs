@@ -153,7 +153,7 @@ test('卸载不会遗留组件，并保留原生输入布局', async t => {
   assert.equal(await page.locator('textarea').isVisible(),true)
 })
 
-test('主题风格开关：开=插件冰蓝玻璃材质，关=DSH 原生 token 表面', async t => {
+test('主题风格开关：开=插件潮汐深海材质，关=DSH 原生 token 表面', async t => {
   const page = await setup(t, {mode:'light'})
 
   // 开态：三件套（HUD / 浮窗 / 委派图）都应带插件自有渐变材质
@@ -174,8 +174,13 @@ test('主题风格开关：开=插件冰蓝玻璃材质，关=DSH 原生 token �
 
   const on = await readMaterials()
   assert.equal(on.gate, true, '主题开启时 body 应带门控属性')
+  // 潮汐材质是深海哑光表面：靠 token 底色 + 0.5px 发丝边 + 漫反射柔影建立层次，
+  // 不再使用 radial-gradient 彩色光斑（那属于要杜绝的 AI 廉价风格）。
   for (const [name, mat] of Object.entries({ HUD: on.hud, 摘要条: on.summary, 节点卡: on.node })) {
-    assert.ok(mat && mat.image !== 'none' && /gradient/.test(mat.image), `${name} 开态应带插件渐变材质，实测 ${mat?.image}`)
+    assert.ok(mat, `${name} 应存在`)
+    assert.equal(mat.image, 'none', `${name} 开态不应再有渐变光斑，实测 ${mat?.image}`)
+    assert.notEqual(mat.color, 'rgba(0, 0, 0, 0)', `${name} 开态应带插件表面底色`)
+    assert.ok(mat.shadow && mat.shadow !== 'none', `${name} 开态应带插件投影`)
   }
 
   // 关态：移除门控，三件套回落到原生 token 表面（无插件渐变）
@@ -199,11 +204,14 @@ test('主题风格开关：开=插件冰蓝玻璃材质，关=DSH 原生 token �
     assert.equal(mat?.image, 'none', `${name} 关态不应带插件渐变材质（实测 ${mat?.image}）`)
   }
 
+
   // 恢复门控后材质回归（开关可反复切换）
   const back = await page.evaluate(() => {
     document.body.setAttribute('data-dsh-tide-theme', '')
     const el = document.querySelector('.dsh-tide-dock-stats-trigger')
-    return getComputedStyle(el).backgroundImage
+    const s = getComputedStyle(el)
+    return { color: s.backgroundColor, shadow: s.boxShadow }
   })
-  assert.match(back, /gradient/, '重新开启后 HUD 应恢复插件材质')
+  assert.equal(back.color, on.hud?.color, '重新开启后 HUD 底色应恢复插件材质')
+  assert.notEqual(back.shadow, 'none', '重新开启后 HUD 应恢复插件投影')
 })

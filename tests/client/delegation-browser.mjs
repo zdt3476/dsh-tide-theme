@@ -419,13 +419,15 @@ test('步数呈现为真实数值指标，不带绿勾且不冒充完成清单',
   assert.doesNotMatch(checklistText, /✔/)
 })
 
-test('主编排节点顶部指示采用内联 SVG 箭头，不包含裸 Unicode 字符', async t => {
+test('主编排节点不再渲染悬空箭头，且节点内不出现裸 Unicode 指示字符', async t => {
   const page = await setup(t, { batches: false })
   await waitCount(page, hosts, 1)
   await page.locator(summary).click()
-  const arrowEl = page.locator('.subagent-orchestrator-arrow')
-  assert.equal(await arrowEl.locator('svg').count(), 1)
-  assert.doesNotMatch(await arrowEl.textContent(), /↑/)
+  // 该箭头此前只存在于 DOM 中、靠 CSS display:none 强行隐藏，属于死代码；
+  // 现已整体移除，节点内容改为纯结构化图标 + 文本。
+  assert.equal(await page.locator('.subagent-orchestrator-arrow').count(), 0)
+  const rootText = await page.locator('.subagent-topology-root').textContent()
+  assert.doesNotMatch(rootText, /↑/)
 })
 
 test('多子代理状态混态时（部分成功、部分失败），聚合呈现为 mixed 状态', async t => {
