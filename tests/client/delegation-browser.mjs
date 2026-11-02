@@ -69,8 +69,11 @@ async function setup(t, { batches = true, running = false } = {}) {
       ${node('one', 'subagent', A)}${node('two', 'subagent_fork', B)}
       ${batches ? node('break', 'bash', 'ordinary tool') + node('three', 'subagent', C) : ''}</div>`
     const dict = { 'delegation.batch': p => `Batch ${p.index}`, 'delegation.agents': p => `${p.count} agents`,
+      'delegation.agentsOne': () => '1 agent',
       'delegation.state.done': () => 'Done', 'delegation.state.running': () => 'Running',
-      'delegation.state.failed': () => 'Failed', 'delegation.steps': p => `${p.count} steps`,
+      'delegation.state.failed': () => 'Failed', 'delegation.state.denied': () => 'Denied',
+      'delegation.state.mixed': () => 'Mixed', 'delegation.state.unknown': () => 'Unknown',
+      'delegation.steps': p => `${p.count} steps`,
       'duration.s': () => 's', 'duration.m': () => 'm' }
     state.handle = mountDelegationPanel({
       sessions: { getSnapshot: () => ({ byId: state.rows }), subscribe: fn => { state.listener = fn; return () => { state.listener = () => {} } } },
@@ -89,7 +92,7 @@ test('同回合兄弟节点分批编号、排序，且宿主步骤折叠后摘�
   const page = await setup(t)
   await waitCount(page, hosts, 2)
   assert.deepEqual(await page.locator('.subagent-topology-summary-label').allTextContents(), ['Batch 1', 'Batch 2'])
-  assert.deepEqual(await page.locator('.subagent-topology-summary-counts').allTextContents(), ['2 agents · 2 Done', '1 agents · 1 Done'])
+  assert.deepEqual(await page.locator('.subagent-topology-summary-counts').allTextContents(), ['2 agents · 2 Done', '1 agent · 1 Done'])
 })
 
 test('宿主步骤折叠时摘要仍然可见', async t => {
@@ -177,7 +180,7 @@ test('切换会话并替换聊天内容，不残留旧摘要与展开状态', as
     window.fixture.listener()
   }, { D })
   await waitCount(page, hosts, 1)
-  await page.waitForFunction(() => document.querySelector('.subagent-topology-summary-counts')?.textContent.includes('1 agents'), null, { timeout: 2500 })
+  await page.waitForFunction(() => /^1 (agent|subagent)/.test(document.querySelector('.subagent-topology-summary-counts')?.textContent ?? ''), null, { timeout: 2500 })
   assert.equal(await page.locator(summary).getAttribute('aria-expanded'), 'false')
   await page.locator(summary).click()
   assert.deepEqual(await page.locator('.subagent-topology-node-title').allTextContents(), ['Delta'])
@@ -233,8 +236,11 @@ test('模拟真实宿主折叠工具行（无 UUID，仅描述与状态文本）
       <div data-chat-turn="turn-1" data-chat-node-key="k2"><div data-tool="subagent" data-state="ok"><span>子智能体</span><span>Inspect client disconnect · 已完成</span></div></div>
     </div>`
     const dict = { 'delegation.batch': p => `Batch ${p.index}`, 'delegation.agents': p => `${p.count} agents`,
+      'delegation.agentsOne': () => '1 agent',
       'delegation.state.done': () => 'Done', 'delegation.state.running': () => 'Running',
-      'delegation.state.failed': () => 'Failed', 'delegation.steps': p => `${p.count} steps`,
+      'delegation.state.failed': () => 'Failed', 'delegation.state.denied': () => 'Denied',
+      'delegation.state.mixed': () => 'Mixed', 'delegation.state.unknown': () => 'Unknown',
+      'delegation.steps': p => `${p.count} steps`,
       'duration.s': () => 's', 'duration.m': () => 'm' }
     state.handle = mountDelegationPanel({
       sessions: {
@@ -285,8 +291,11 @@ test('多轮对话中，第二轮发起新委派应编号为递增批次并正�
       </div>
     `
     const dict = { 'delegation.batch': p => `Batch ${p.index}`, 'delegation.agents': p => `${p.count} agents`,
+      'delegation.agentsOne': () => '1 agent',
       'delegation.state.done': () => 'Done', 'delegation.state.running': () => 'Running',
-      'delegation.state.failed': () => 'Failed', 'delegation.steps': p => `${p.count} steps`,
+      'delegation.state.failed': () => 'Failed', 'delegation.state.denied': () => 'Denied',
+      'delegation.state.mixed': () => 'Mixed', 'delegation.state.unknown': () => 'Unknown',
+      'delegation.steps': p => `${p.count} steps`,
       'duration.s': () => 's', 'duration.m': () => 'm' }
     state.handle = mountDelegationPanel({
       sessions: {
@@ -336,8 +345,11 @@ test('第一轮对话完成后，动态开启第二轮对话派发子代理，�
       </div>
     `
     const dict = { 'delegation.batch': p => `Batch ${p.index}`, 'delegation.agents': p => `${p.count} agents`,
+      'delegation.agentsOne': () => '1 agent',
       'delegation.state.done': () => 'Done', 'delegation.state.running': () => 'Running',
-      'delegation.state.failed': () => 'Failed', 'delegation.steps': p => `${p.count} steps`,
+      'delegation.state.failed': () => 'Failed', 'delegation.state.denied': () => 'Denied',
+      'delegation.state.mixed': () => 'Mixed', 'delegation.state.unknown': () => 'Unknown',
+      'delegation.steps': p => `${p.count} steps`,
       'duration.s': () => 's', 'duration.m': () => 'm' }
     state.handle = mountDelegationPanel({
       sessions: {
@@ -395,4 +407,152 @@ test('卸载后删除摘要并恢复原工具行', async t => {
   assert.equal(await page.locator(hosts).count(), 0)
   assert.equal(await page.locator('[data-dsh-simplify-delegation-source]').count(), 0)
   assert.equal(await page.locator('[data-tool="subagent"]').isVisible(), true)
+})
+
+test('步数呈现为真实数值指标，不带绿勾且不冒充完成清单', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  await page.locator(summary).click()
+  assert.equal(await page.locator('.subagent-topology-node-steps').first().textContent(), '2 steps')
+  assert.equal(await page.locator('.subagent-topology-checklist .subagent-check-icon:not(.is-error)').count(), 0)
+  const checklistText = await page.locator('.subagent-topology-checklist').first().textContent()
+  assert.doesNotMatch(checklistText, /✔/)
+})
+
+test('主编排节点顶部指示采用内联 SVG 箭头，不包含裸 Unicode 字符', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  await page.locator(summary).click()
+  const arrowEl = page.locator('.subagent-orchestrator-arrow')
+  assert.equal(await arrowEl.locator('svg').count(), 1)
+  assert.doesNotMatch(await arrowEl.textContent(), /↑/)
+})
+
+test('多子代理状态混态时（部分成功、部分失败），聚合呈现为 mixed 状态', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  // 将会话中一个子代理设为成功，另一个置为失败（工具行对应 error）
+  await page.evaluate(({ A, B }) => {
+    window.fixture.rows[A].running = false
+    window.fixture.rows[B].running = false
+    const nodeB = document.querySelector('[data-chat-node-key="two"] [data-tool]')
+    if (nodeB) {
+      nodeB.setAttribute('data-state', 'error')
+      nodeB.insertAdjacentHTML('beforeend', '<div data-error>Tool execution denied</div>')
+    }
+    window.fixture.listener()
+  }, { A, B })
+  await page.waitForFunction(() => document.querySelector('.subagent-active-chip')?.dataset.state === 'mixed')
+  const chip = page.locator('.subagent-active-chip')
+  assert.equal(await chip.getAttribute('data-state'), 'mixed')
+  assert.equal(await chip.getAttribute('data-running'), 'false')
+  const chipText = await chip.textContent()
+  assert.match(chipText, /部分完成|Mixed/)
+})
+
+test('多行换行排布时连接线只连接首行卡片顶边，不画悬空短棍', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  await page.locator(summary).click()
+  // 模拟较窄宽度使卡片折行为多行
+  await page.evaluate(() => {
+    const agents = document.querySelector('.subagent-topology-agents')
+    if (agents) {
+      agents.style.display = 'grid'
+      agents.style.gridTemplateColumns = 'repeat(1, 1fr)' // 强制单列多行
+    }
+    const host = document.querySelector('.subagent-topology-host')
+    const summary = host?.querySelector('.subagent-topology-summary')
+    // 触发重绘
+    window.dispatchEvent(new Event('resize'))
+  })
+  await page.waitForTimeout(100)
+  const d = await page.locator('.subagent-topology-lines path').getAttribute('d')
+  // 核心断言：首行连接产生平滑贝塞尔曲线 C，绝不是只下探半空的悬空短棍（如 M ... V ...）
+  assert.match(d, /C/)
+  assert.doesNotMatch(d, /^M\s+[0-9.]+\s+[0-9.]+\s+V\s+[0-9.]+$/)
+  const segments = d.trim().split(/(?=M\s+)/).filter(Boolean)
+  assert.equal(segments.length, 1, '多行排布时仅连接首行卡片顶边，后续行不生成悬空短棍，连线段数严格为 1')
+})
+
+test('子代理卡片固定尺寸居中排布，不被拉伸铺满整行', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  await page.locator(summary).click()
+  await page.waitForSelector('.subagent-topology-agents')
+  const geometry = await page.evaluate(() => {
+    const agents = document.querySelector('.subagent-topology-agents')
+    const cards = [...agents.querySelectorAll('.subagent-topology-node')]
+    return {
+      count: agents.dataset.count,
+      agentsWidth: agents.getBoundingClientRect().width,
+      cardWidths: cards.map((c) => Math.round(c.getBoundingClientRect().width))
+    }
+  })
+  assert.equal(geometry.count, '2')
+  // 固定尺寸：两张卡都应是 220px 上限宽，而不是各占容器一半；
+  // 容器变宽时卡片不跟着拉伸，避免和主 agent 那张固定卡比例失衡。
+  for (const width of geometry.cardWidths) {
+    assert.equal(width, 220, `子代理卡片宽度应固定为 220px，实际 ${width}px`)
+  }
+  assert.ok(geometry.cardWidths[0] < geometry.agentsWidth * 0.6, '卡片不应铺满整行')
+})
+
+test('同批卡片顺序按子代理创建顺序排列，而不是 DOM 工具行顺序', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  // 把 DOM 里的两条委派工具行对调，模拟宿主渲染顺序与创建顺序不一致。
+  await page.evaluate(({ A, B }) => {
+    const rows = [...document.querySelectorAll('[data-chat-node-key]')]
+    const host = rows[0].parentElement
+    host.insertBefore(rows[1], rows[0])
+    window.fixture.listener()
+  }, { A, B })
+  await page.locator(summary).click()
+  const titles = await page.locator('.subagent-topology-node-title').allTextContents()
+  assert.deepEqual(titles, ['Alpha', 'Beta'], '卡片应按子代理创建顺序（Alpha 在前）而非 DOM 顺序')
+})
+
+test('单个子代理的摘要使用单数文案，不出现 "1 subagents"', async t => {
+  const page = await setup(t, { batches: false })
+  await waitCount(page, hosts, 1)
+  // 只保留一个子代理：把第二条委派工具行移除并重新同步。
+  await page.evaluate(() => {
+    const nodes = [...document.querySelectorAll('[data-chat-node-key]')]
+    nodes[1]?.remove()
+    window.fixture.listener()
+  })
+  await page.waitForFunction(() => /^1 (agent|subagent|个子代理)/.test(document.querySelector('.subagent-topology-summary-counts')?.textContent ?? ''))
+  const text = await page.locator('.subagent-topology-summary-counts').first().textContent()
+  assert.match(text, /^1 (agent|subagent|个子代理)/)
+  assert.doesNotMatch(text, /1 subagents/)
+})
+
+test('子代理卡片宽度固定，单个与多个都保持与主 agent 协调的尺寸', async t => {
+  // 每张卡必须固定 220px（4 个时受容器所限可压缩），
+  // 否则单个子代理会被拉伸成整行，与固定尺寸的主 agent 卡比例失衡。
+  for (const count of [1, 2, 3, 4]) {
+    const page = await setup(t, { batches: false })
+    await waitCount(page, hosts, 1)
+    // 只保留前 count 条工具行，并同步裁掉对应子代理行，让成员数真正变化。
+    await page.evaluate(({ count }) => {
+      const keys = [...document.querySelectorAll('[data-chat-node-key]')]
+      keys.slice(count).forEach((row) => row.remove())
+      const ids = Object.keys(window.fixture.rows)
+      // 保留会话 a 的前 count 个子代理，其余从快照中移除
+      const sessionA = ids.filter((id) => window.fixture.rows[id].parentId === 'session-a')
+      sessionA.slice(count).forEach((id) => { delete window.fixture.rows[id] })
+      window.fixture.listener()
+    }, { count })
+    await page.locator(summary).first().click()
+    await page.waitForSelector('.subagent-topology-agents')
+    const widths = await page.evaluate(() =>
+      [...document.querySelectorAll('.subagent-topology-node')].map((el) => Math.round(el.getBoundingClientRect().width)))
+    assert.ok(widths.length > 0, `${count} 个子代理时应渲染卡片`)
+    for (const width of widths) {
+      assert.ok(width <= 220, `${count} 个子代理时卡片宽度不得超过 220px，实际 ${width}px`)
+      if (count <= 3) assert.equal(width, 220, `${count} 个子代理时卡片宽度应固定为 220px，实际 ${width}px`)
+    }
+    await page.close()
+  }
 })

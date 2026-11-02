@@ -90,9 +90,9 @@ describe('sidebar tabs', () => {
 
 describe('popup placement', () => {
   const viewport = { width: 1440, height: 900 }
-  it('默认以锚点为中心水平居中', () => {
+  it('默认以锚点为中心水平居中，浮窗边框紧贴锚点边框（无间隙）', () => {
     const placement = placePopup({ left: 100, right: 200, bottom: 300, top: 280 }, { width: 240, height: 200 }, viewport)
-    expect(placement).toEqual({ left: 30, top: 304 })
+    expect(placement).toEqual({ left: 30, top: 300 })
   })
 
   it('越界时钳制在视口内', () => {
@@ -104,14 +104,14 @@ describe('popup placement', () => {
 
   it('left / right 对齐分支保持可用', () => {
     const left = placePopup({ left: 100, right: 200, bottom: 300, top: 280 }, { width: 240, height: 200 }, viewport, 'left')
-    expect(left).toEqual({ left: 100, top: 304 })
+    expect(left).toEqual({ left: 100, top: 300 })
     const right = placePopup({ left: 100, right: 200, bottom: 300, top: 280 }, { width: 240, height: 200 }, viewport, 'right')
-    expect(right).toEqual({ left: 8, top: 304 })
+    expect(right).toEqual({ left: 8, top: 300 })
   })
 
-  it('下方放不下时翻转到锚点上方', () => {
+  it('下方放不下时翻转到锚点上方，底边紧贴锚点上边框', () => {
     const placement = placePopup({ left: 100, right: 200, bottom: 880, top: 860 }, { width: 240, height: 200 }, viewport)
-    expect(placement.top).toBe(860 - 200 - 4)
+    expect(placement.top).toBe(860 - 200)
   })
 })
 

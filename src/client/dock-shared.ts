@@ -35,7 +35,16 @@ export function useDismiss(sh: DockShared, onClose: () => void, active: boolean)
     if (!active) return
     const onPointer = (event: Event) => {
       const target = event.target
-      if (target instanceof Element && target.closest('[data-dsh-simplify-dock-root]') !== null) return
+      if (target instanceof Element) {
+        if (
+          target.closest('[data-dsh-simplify-dock-root]') !== null ||
+          target.closest('[data-dsh-simplify-portal-root]') !== null ||
+          target.closest('[data-dsh-simplify-popup]') !== null ||
+          target.closest('[data-dsh-simplify-stats-popover]') !== null
+        ) {
+          return
+        }
+      }
       onClose()
     }
     const onKey = (event: KeyboardEvent) => {

@@ -13,6 +13,7 @@ import { rankCatalog, type UsageRank } from './usage-rank'
 import { effortName, providerName } from './localize'
 import { placePopup, measurePopup } from './popup'
 import { useDismiss } from './dock-shared'
+import { createPortal } from 'react-dom'
 import type { DockShared } from './dock-shared'
 
 export interface ModelControlProps {
@@ -83,7 +84,12 @@ export function createModelControl(props: ModelControlProps) {
       if (anchor === null) return
       const rect = anchor.getBoundingClientRect()
       const align = open === 'effort' ? 'center' : 'left'
-      setPos(placePopup({ left: rect.left, right: rect.right, bottom: rect.bottom, top: rect.top }, size, viewport, align))
+      const computedPos = placePopup({ left: rect.left, right: rect.right, bottom: rect.bottom, top: rect.top }, size, viewport, align, 'top')
+      // 短视口边界约束：浮层顶部永远在视口可见范围之内
+      setPos({
+        left: Math.max(8, computedPos.left),
+        top: Math.max(8, computedPos.top)
+      })
     }, [open, state.groups.length])
 
     hooks.useEffect(() => {
@@ -150,6 +156,8 @@ export function createModelControl(props: ModelControlProps) {
     children.push(h('span', { 'data-dsh-simplify-separator': '', 'aria-hidden': 'true' }, '·'))
     children.push(pill('effort', h('span', { 'data-dsh-simplify-pill-label': '' }, effort ?? t('effort.unavailableShort'))))
 
+    let popupNode: unknown = null
+
     // 模型列表：平铺放大——一供应商一列，列内模型纵向排列，全目录一屏可见。
     if (open === 'model') {
       const columns: unknown[] = []
@@ -191,8 +199,9 @@ export function createModelControl(props: ModelControlProps) {
           )
         )
       }
-      children.push(h('div', {
+      popupNode = h('div', {
         'data-dsh-simplify-popup': '',
+        'data-dsh-simplify-portal-root': '',
         'data-dsh-simplify-model-grid': '',
         ref: (el: HTMLElement | null) => { popupRef.current = el },
         style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
@@ -201,7 +210,7 @@ export function createModelControl(props: ModelControlProps) {
         h('span', { 'data-dsh-simplify-grid-title': '' }, t('model.title')),
         visibleGroups.length === 0 ? null : h('span', { 'data-dsh-simplify-grid-hint': '' }, t('model.providers', { count: visibleGroups.length }))
       ),
-      h('div', { 'data-dsh-simplify-grid-columns': '' }, columns)))
+      h('div', { 'data-dsh-simplify-grid-columns': '' }, columns))
     }
 
     // 思考等级滑块：标题行给出当前档位，轨道带填充进度，刻度文字标出全部档位。
@@ -209,65 +218,73 @@ export function createModelControl(props: ModelControlProps) {
       const meta = groups.find((candidate) => candidate.id === selection?.provider)?.models.find((candidate) => candidate.id === selection?.model)?.reasoning
       const levels = effortLevels(meta, t('effort.providerDefault'))
       if (levels.length === 0) {
-        children.push(h('div', { 'data-dsh-simplify-popup': '', ref: (el: HTMLElement | null) => { popupRef.current = el }, style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top } }, h('div', { 'data-dsh-simplify-note': '' }, t('effort.unavailable'))))
+        popupNode = h('div', {
+          'data-dsh-simplify-popup': '',
+          'data-dsh-simplify-portal-root': '',
+          ref: (el: HTMLElement | null) => { popupRef.current = el },
+          style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
+        }, h('div', { 'data-dsh-simplify-note': '' }, t('effort.unavailable')))
       } else {
         const currentId = draftEffort === null ? selection?.reasoningEffort ?? meta?.defaultEffort : draftEffort || undefined
         const draftIndex = draftEffort === null ? -1 : levels.findIndex((level) => (level.id ?? '') === draftEffort)
         const index = draftIndex >= 0 ? draftIndex : Math.max(0, levels.findIndex((level) => level.id === currentId))
         const fill = levels.length > 1 ? (index / (levels.length - 1)) * 100 : 100
-        children.push(
-          h('div', {
-            'data-dsh-simplify-popup': '',
-            'data-dsh-simplify-effort': '',
-            ref: (el: HTMLElement | null) => { popupRef.current = el },
-            style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
-          },
-          h('div', { 'data-dsh-simplify-effort-head': '' },
-            h('span', { 'data-dsh-simplify-effort-title': '' }, t('effort.title')),
-            h('span', { 'data-dsh-simplify-effort-value': '' }, levels[index]?.name ?? '')
-          ),
-          h('div', { 'data-dsh-simplify-effort-rail': '', style: { '--dsh-simplify-fill': `${fill}%` } },
-            h('input', {
-              type: 'range',
-              'aria-label': t('effort.title'),
-              'aria-valuetext': levels[index]?.name,
-              'data-dsh-simplify-effort-slider': '',
-              min: 0,
-              max: levels.length - 1,
-              step: 1,
-              value: index,
-              onChange: (event: Event) => {
+        popupNode = h('div', {
+          'data-dsh-simplify-popup': '',
+          'data-dsh-simplify-portal-root': '',
+          'data-dsh-simplify-effort': '',
+          ref: (el: HTMLElement | null) => { popupRef.current = el },
+          style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
+        },
+        h('div', { 'data-dsh-simplify-effort-head': '' },
+          h('span', { 'data-dsh-simplify-effort-title': '' }, t('effort.title')),
+          h('span', { 'data-dsh-simplify-effort-value': '' }, levels[index]?.name ?? '')
+        ),
+        h('div', { 'data-dsh-simplify-effort-rail': '', style: { '--dsh-simplify-fill': `${fill}%` } },
+          h('input', {
+            type: 'range',
+            'aria-label': t('effort.title'),
+            'aria-valuetext': levels[index]?.name,
+            'data-dsh-simplify-effort-slider': '',
+            min: 0,
+            max: levels.length - 1,
+            step: 1,
+            value: index,
+            onChange: (event: Event) => {
+              const input = event.target as HTMLInputElement
+              setDraftEffort(levels[Number(input.value)]?.id ?? '')
+            },
+            onPointerUp: (event: Event) => {
+              const level = levels[Number((event.target as HTMLInputElement).value)]
+              if (level !== undefined) commitEffort(level.id)
+            },
+            onKeyUp: (event: KeyboardEvent) => {
+              if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
                 const input = event.target as HTMLInputElement
-                setDraftEffort(levels[Number(input.value)]?.id ?? '')
-              },
-              onPointerUp: (event: Event) => {
-                const level = levels[Number((event.target as HTMLInputElement).value)]
+                const level = levels[Number(input.value)]
                 if (level !== undefined) commitEffort(level.id)
-              },
-              onKeyUp: (event: KeyboardEvent) => {
-                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Home' || event.key === 'End') {
-                  const input = event.target as HTMLInputElement
-                  const level = levels[Number(input.value)]
-                  if (level !== undefined) commitEffort(level.id)
-                }
               }
-            })
-          ),
-          h('div', { 'data-dsh-simplify-effort-scale': '' }, levels.map((level, levelIndex) => {
-            const ratio = levels.length > 1 ? levelIndex / (levels.length - 1) : 0
-            return h('span', {
-              key: level.id ?? 'provider-default',
-              'data-active': levelIndex === index ? 'true' : 'false',
-              // 标签中心对准档位位置（含两端），与滑块拇指轨迹重合。
-              style: { left: `${ratio * 100}%`, transform: 'translateX(-50%)' }
-            }, level.name)
-          }))
-          )
+            }
+          })
+        ),
+        h('div', { 'data-dsh-simplify-effort-scale': '' }, levels.map((level, levelIndex) => {
+          const ratio = levels.length > 1 ? levelIndex / (levels.length - 1) : 0
+          return h('span', {
+            key: level.id ?? 'provider-default',
+            'data-active': levelIndex === index ? 'true' : 'false',
+            // 标签中心对准档位位置（含两端），与滑块拇指轨迹重合。
+            style: { left: `${ratio * 100}%`, transform: 'translateX(-50%)' }
+          }, level.name)
+        }))
         )
       }
     }
 
-    return h('div', { 'data-dsh-simplify-dock-root': '' }, children)
+    const popupPortal = popupNode && typeof document !== 'undefined'
+      ? createPortal(popupNode, document.body)
+      : popupNode
+
+    return h('div', { 'data-dsh-simplify-dock-root': '' }, ...children, popupPortal)
   }
 }
 

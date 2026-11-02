@@ -33,13 +33,27 @@ export function placePopup(
   if (left + size.width > viewport.width - 8) left = viewport.width - 8 - size.width
   if (left < 8) left = 8
 
+  const topSpace = rect.top - 8
+  const bottomSpace = viewport.height - 8 - rect.bottom
   let top: number
   if (preferredSide === 'top') {
-    top = rect.top - size.height - 6
-    if (top < 8) top = Math.min(viewport.height - 8 - size.height, rect.bottom + 6)
+    // 优先向上，浮窗底边紧贴锚点上边框（无缝隙）；放不下看下方，最后贴视口顶。
+    if (size.height <= topSpace) {
+      top = rect.top - size.height
+    } else if (size.height <= bottomSpace) {
+      top = rect.bottom
+    } else {
+      top = 8
+    }
   } else {
-    top = rect.bottom + 4
-    if (top + size.height > viewport.height - 8) top = Math.max(8, rect.top - size.height - 4)
+    // 优先向下，浮窗顶边紧贴锚点下边框（无缝隙）；放不下看上方，最后贴视口底。
+    if (size.height <= bottomSpace) {
+      top = rect.bottom
+    } else if (size.height <= topSpace) {
+      top = rect.top - size.height
+    } else {
+      top = Math.max(8, viewport.height - 8 - size.height)
+    }
   }
 
   return { left: Math.round(left), top: Math.round(top) }
@@ -47,6 +61,8 @@ export function placePopup(
 
 /** 测量一个已插入 DOM（visibility 隐藏）的弹层尺寸。 */
 export function measurePopup(popup: HTMLElement): { width: number; height: number } {
-  const rect = popup.getBoundingClientRect()
-  return { width: rect.width, height: rect.height }
+  // 布局尺寸（offsetWidth/Height）不受入场动画 transform 影响；
+  // getBoundingClientRect 会量到 scale(0.98) 后的视觉尺寸（392x539 vs 400x550），
+  // 导致定位差 11px、边框无法贴合。
+  return { width: popup.offsetWidth, height: popup.offsetHeight }
 }

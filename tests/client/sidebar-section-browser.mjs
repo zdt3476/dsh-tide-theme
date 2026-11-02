@@ -177,4 +177,130 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
   const inputY = await page.locator('input').evaluate(el => el.getBoundingClientRect().bottom)
   const pinnedHeaderY = await pinnedHeader.evaluate(el => el.getBoundingClientRect().top)
   assert.equal(pinnedHeaderY > inputY, true, '置顶标头必须在搜索输入框的下方！')
+
+  // 4. 真实排序断言：所有置顶工作区必须排在"工作区"小节标题之上，
+  //    普通工作区绝不能出现在置顶区。此前只测标头位置，导致排序回退长期漏检。
+  const order = await page.evaluate(() => {
+    const list = document.querySelector('.workspace-list-container')
+    const children = [...list.children]
+    const pinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-simplify-section') === 'pinned')
+    const unpinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-simplify-section') === 'unpinned')
+    const rows = [...list.querySelectorAll('[data-row-key^="workspace:"]')].map((row) => ({
+      id: (row.getAttribute('data-row-key') ?? '').replace('workspace:', ''),
+      pinned: row.parentElement?.parentElement?.hasAttribute('data-dsh-simplify-pinned') === true,
+      top: row.getBoundingClientRect().top
+    }))
+    return { children: children.length, pinnedHeaderIndex, unpinnedHeaderIndex, rows }
+  })
+
+  assert.ok(order.unpinnedHeaderIndex > order.pinnedHeaderIndex, '未置顶小节标题必须在置顶小节之后')
+
+  // 置顶行全部在未置顶小节标题之上
+  const unpinnedHeaderTop = await unpinnedHeader.evaluate((el) => el.getBoundingClientRect().top)
+  const pinnedRows = order.rows.filter((row) => row.pinned)
+  const unpinnedRows = order.rows.filter((row) => !row.pinned)
+  assert.equal(pinnedRows.length, 4, '应有 4 个置顶工作区')
+  assert.equal(unpinnedRows.length, 2, '应有 2 个普通工作区')
+  for (const row of pinnedRows) {
+    assert.ok(row.top < unpinnedHeaderTop, `置顶工作区 ${row.id} 必须位于未置顶小节标题之上`)
+  }
+  for (const row of unpinnedRows) {
+    assert.ok(row.top > unpinnedHeaderTop, `普通工作区 ${row.id} 不得出现在置顶区域内`)
+  }
+})
+
+test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（···）注入置顶/取消置顶动作', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  await page.goto(`${origin}/fixture`)
+
+  await page.evaluate(async () => {
+    const { mountSidebarGroups } = await import('/src/client/sidebar-groups.ts')
+
+    localStorage.setItem('dsh-simplify-theme.pinned-workspaces', JSON.stringify(['default']))
+
+    const mount = document.getElementById('mount')
+    mount.innerHTML = `
+      <div data-slot="sidebar.workspaces">
+        <div class="sidebar-header">
+          <button aria-label="搜索工作区">🔍</button>
+        </div>
+        <div class="workspace-list-container">
+          <div><span>
+            <div data-row-key="workspace:default">
+              📁 default
+              <button class="menu-btn" aria-label="操作工作区 default">···</button>
+            </div>
+          </span></div>
+          <div><span>
+            <div data-row-key="workspace:server">
+              📁 server
+              <button class="menu-btn" aria-label="操作工作区 server">···</button>
+            </div>
+          </span></div>
+        </div>
+      </div>
+    `
+    const workspaces = [
+      { workspaceId: 'default', sessionIds: [] },
+      { workspaceId: 'server', sessionIds: [] }
+    ]
+    const dict = {
+      'groups.pinWorkspace': '置顶工作区',
+      'groups.unpinWorkspace': '取消置顶',
+      'groups.pinnedTitle': '置顶',
+      'groups.unpinnedTitle': '工作区'
+    }
+    mountSidebarGroups({
+      locale: (k, p) => typeof dict[k] === 'function' ? dict[k](p) : dict[k] ?? k,
+      createElement: (tag) => document.createElement(tag),
+      archivedFilter: () => 'default',
+      workspaces: { getSnapshot: () => ({ items: workspaces }), subscribe: () => () => {} },
+      sessions: { getSnapshot: () => ({ byId: {} }), subscribe: () => () => {} }
+    })
+  })
+
+  // 1. 验证顶栏不再存在置顶按钮
+  assert.equal(await page.locator('[data-dsh-simplify-pin-toggle]').count(), 0, '顶栏置顶按钮必须彻底移除')
+
+  // 2. 模拟用户点击 server 的菜单按钮并唤出原生菜单
+  await page.evaluate(() => {
+    const serverBtn = document.querySelector('[data-row-key="workspace:server"] .menu-btn')
+    serverBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    menu.innerHTML = `
+      <button role="menuitem"><span>重命名</span></button>
+      <button role="menuitem"><span>删除工作区</span></button>
+    `
+    document.body.appendChild(menu)
+  })
+
+  // 3. 验证菜单项被注入，且状态为"置顶工作区"（因为此时 server 未置顶）
+  await page.waitForSelector('[data-dsh-simplify-workspace-pin="server"]')
+  const pinItem = page.locator('[data-dsh-simplify-workspace-pin="server"]')
+  assert.match(await pinItem.textContent(), /置顶工作区/)
+
+  // 4. 点击该项，验证 server 被置顶
+  await pinItem.click()
+  const pinnedAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh-simplify-theme.pinned-workspaces') || '[]'))
+  assert.ok(pinnedAfter.includes('server'), 'server 应加入置顶存储')
+
+  // 5. 再次模拟打开 server 菜单，验证状态变为"取消置顶"
+  await page.evaluate(() => {
+    document.querySelector('[role="menu"]')?.remove()
+    const serverBtn = document.querySelector('[data-row-key="workspace:server"] .menu-btn')
+    serverBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    menu.innerHTML = `
+      <button role="menuitem"><span>重命名</span></button>
+      <button role="menuitem"><span>删除工作区</span></button>
+    `
+    document.body.appendChild(menu)
+  })
+
+  await page.waitForSelector('[data-dsh-simplify-workspace-pin="server"]')
+  const unpinItem = page.locator('[data-dsh-simplify-workspace-pin="server"]')
+  assert.match(await unpinItem.textContent(), /取消置顶/)
 })

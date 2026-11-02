@@ -223,47 +223,73 @@ export function extractTokenUsage(usage: unknown): ExtractedTokenUsage | null {
   }
 }
 
+/**
+ * 判断是否为非负有限数字（Token 数量校验）
+ */
+function isValidTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
+
 /** 计算上下文占用、上限及预警等级 */
 export function calculateContextCapacity(
   pressure: ContextPressureProjection | undefined,
-  usage?: TokenUsageProjection | unknown,
+  _usage?: TokenUsageProjection | unknown,
   breakdown?: ContextBreakdownProjection
 ): ContextCapacity | null {
   const windowLimit = pressure?.contextWindow
-  if (typeof windowLimit !== 'number' || !Number.isFinite(windowLimit) || windowLimit <= 0) {
+  if (!isValidTokenCount(windowLimit) || windowLimit <= 0) {
     return null
   }
 
-  // projectedTokens 实时反映上下文压缩与裁剪后的真实尺寸；pressureTokens 为上一次 LLM 请求采样时的尺寸
-  const extracted = extractTokenUsage(usage)
-  const breakdownSum = breakdown
-    ? ((breakdown.systemTokens ?? 0) + (breakdown.toolsTokens ?? 0) + (breakdown.messageTokens ?? 0))
-    : 0
+  // 1. 检验 breakdown：仅当所有提供的字段均为非负有限数字且至少存在一项时视为可靠来源
+  let validBreakdownSum: number | null = null
+  let breakdownDetail: ContextCapacity['breakdown'] = undefined
+  if (breakdown && typeof breakdown === 'object') {
+    const { systemTokens, toolsTokens, messageTokens } = breakdown
+    const hasField = systemTokens !== undefined || toolsTokens !== undefined || messageTokens !== undefined
+    if (hasField) {
+      const isFieldValid = (v: number | undefined) => v === undefined || isValidTokenCount(v)
+      if (isFieldValid(systemTokens) && isFieldValid(toolsTokens) && isFieldValid(messageTokens)) {
+        const s = systemTokens ?? 0
+        const t = toolsTokens ?? 0
+        const m = messageTokens ?? 0
+        const sum = s + t + m
+        validBreakdownSum = sum
+        breakdownDetail = {
+          systemTokens: s,
+          toolsTokens: t,
+          messageTokens: m,
+          totalTokens: sum
+        }
+      }
+    }
+  }
 
-  const used = pressure?.projectedTokens
-    ?? pressure?.pressureTokens
-    ?? (breakdownSum > 0 ? breakdownSum : undefined)
-    ?? extracted?.totalTokens
+  // 2. 仅从可信当前上下文来源推导已用 Token，优先级：
+  //    projectedTokens (实时压缩/裁剪后真实尺寸，0有效) -> pressureTokens (采样尺寸) -> breakdown
+  //    契约规定：历史累计 tokenUsage 绝不可冒充当前上下文，宁可缺测也不伪造容量。
+  let used: number | null = null
+  if (isValidTokenCount(pressure?.projectedTokens)) {
+    used = pressure.projectedTokens
+  } else if (isValidTokenCount(pressure?.pressureTokens)) {
+    used = pressure.pressureTokens
+  } else if (validBreakdownSum !== null) {
+    used = validBreakdownSum
+  }
 
-  if (typeof used !== 'number' || !Number.isFinite(used) || used <= 0) {
+  if (used === null || !isValidTokenCount(used)) {
     return null
   }
 
   const usedRatio = Math.min(1, used / windowLimit)
   const usedPercent = Math.round(usedRatio * 100)
+  if (!Number.isFinite(usedPercent) || usedPercent < 0) {
+    return null
+  }
   const remainingTokens = Math.max(0, windowLimit - used)
 
   const bucket: PercentBucket = classifyPercent('context', usedPercent)
   const level: ContextLevel = bucket === 'bad' ? 'critical' : bucket === 'warn' ? 'warning' : 'comfortable'
-
-  const breakdownDetail = breakdown && (breakdown.systemTokens !== undefined || breakdown.toolsTokens !== undefined || breakdown.messageTokens !== undefined)
-    ? {
-        systemTokens: breakdown.systemTokens ?? 0,
-        toolsTokens: breakdown.toolsTokens ?? 0,
-        messageTokens: breakdown.messageTokens ?? 0,
-        totalTokens: (breakdown.systemTokens ?? 0) + (breakdown.toolsTokens ?? 0) + (breakdown.messageTokens ?? 0)
-      }
-    : undefined
 
   return {
     usedTokens: used,

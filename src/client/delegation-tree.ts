@@ -8,7 +8,7 @@
 
 import { effortName } from './localize'
 
-export type DelegationStatus = 'running' | 'done' | 'failed' | 'denied'
+export type DelegationStatus = 'running' | 'done' | 'failed' | 'denied' | 'unknown'
 
 export interface DelegationNode {
   id: string
@@ -82,12 +82,18 @@ export function toDelegationNode(id: string, row: SessionRow | undefined, now: n
   if (row === undefined || row.origin !== 'subagent') return null
   const model = selectionModel(row.projectionValues?.modelSelection)
   const effort = selectionEffort(row.projectionValues?.modelSelection)
+  const isRunning = row.running === true || positive(row.projectionValues?.subagentTiming?.active?.since) !== undefined
+  const status: DelegationStatus = isRunning
+    ? 'running'
+    : row.running === false
+      ? 'done'
+      : 'unknown'
   return {
     id,
     title: row.displayTitle ?? row.title ?? id,
     ...(model === undefined || model === '' ? {} : { model }),
     ...(effort === undefined ? {} : { effort }),
-    status: row.running === true ? 'running' : 'done',
+    status,
     ...((): { durationMs?: number } => {
       const duration = delegationDuration(row.projectionValues?.subagentTiming, now)
       return duration === undefined ? {} : { durationMs: duration }

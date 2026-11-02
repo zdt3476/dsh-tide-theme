@@ -170,6 +170,83 @@ describe('calculateContextCapacity', () => {
     expect(calculateContextCapacity({ pressureTokens: 300000, contextWindow: 500000 })?.bucket).toBe('warn')
     expect(calculateContextCapacity({ pressureTokens: 400000, contextWindow: 500000 })?.bucket).toBe('bad')
   })
+
+  describe('契约防御：当前上下文来源可信度与边界值 (Task-4)', () => {
+    it('宁可缺测：缺失可靠当前上下文来源时，不可由历史累计 tokenUsage 冒充', () => {
+      // 只有 contextWindow，但没有当前上下文 (projectedTokens/pressureTokens/breakdown)
+      const pressureWithoutCurrentTokens: ContextPressureProjection = {
+        contextWindow: 200000
+      }
+      // 历史累计可能有数十万 token
+      const cumulativeUsage: TokenUsageProjection = {
+        totals: {
+          uncachedInputTokens: 50000,
+          cacheReadTokens: 100000,
+          cacheWriteTokens: 10000,
+          outputTokens: 40000
+        }
+      }
+
+      // calculateContextCapacity 必须返回 null，绝不能返回 200000/200000 导致虚假 100% 满
+      const cap = calculateContextCapacity(pressureWithoutCurrentTokens, cumulativeUsage)
+      expect(cap).toBeNull()
+    })
+
+    it('有效性支持：projectedTokens=0 有效，应能正常显示 0% 占用而非当成无数据', () => {
+      const pressureZero: ContextPressureProjection = {
+        projectedTokens: 0,
+        contextWindow: 200000
+      }
+      const cap = calculateContextCapacity(pressureZero)
+      expect(cap).not.toBeNull()
+      expect(cap).toEqual({
+        usedTokens: 0,
+        contextWindow: 200000,
+        remainingTokens: 200000,
+        usedPercent: 0,
+        level: 'comfortable',
+        bucket: 'good',
+        breakdown: undefined
+      })
+    })
+
+    it('invalid NaN 与负值不可产生百分比，必须防御并返回 null', () => {
+      const validWindow = 200000
+      // 负值
+      expect(calculateContextCapacity({ projectedTokens: -1, contextWindow: validWindow })).toBeNull()
+      expect(calculateContextCapacity({ pressureTokens: -100, contextWindow: validWindow })).toBeNull()
+      // NaN 与非法数值
+      expect(calculateContextCapacity({ projectedTokens: Number.NaN, contextWindow: validWindow })).toBeNull()
+      expect(calculateContextCapacity({ pressureTokens: Number.NaN, contextWindow: validWindow })).toBeNull()
+      expect(calculateContextCapacity({ projectedTokens: Number.POSITIVE_INFINITY, contextWindow: validWindow })).toBeNull()
+      // 非法 contextWindow
+      expect(calculateContextCapacity({ projectedTokens: 1000, contextWindow: 0 })).toBeNull()
+      expect(calculateContextCapacity({ projectedTokens: 1000, contextWindow: -200000 })).toBeNull()
+      expect(calculateContextCapacity({ projectedTokens: 1000, contextWindow: Number.NaN })).toBeNull()
+      // breakdown 中的负值或 NaN 防御
+      expect(calculateContextCapacity(
+        { contextWindow: validWindow },
+        undefined,
+        { systemTokens: -10, toolsTokens: 100, messageTokens: 200 }
+      )).toBeNull()
+      expect(calculateContextCapacity(
+        { contextWindow: validWindow },
+        undefined,
+        { systemTokens: Number.NaN, toolsTokens: 100, messageTokens: 200 }
+      )).toBeNull()
+    })
+
+    it('仅在可靠 breakdown 存在时作为当前上下文来源', () => {
+      const cap = calculateContextCapacity(
+        { contextWindow: 100000 },
+        undefined,
+        { systemTokens: 500, toolsTokens: 1500, messageTokens: 3000 }
+      )
+      expect(cap).not.toBeNull()
+      expect(cap?.usedTokens).toBe(5000)
+      expect(cap?.usedPercent).toBe(5)
+    })
+  })
 })
 
 describe('deriveComposerStats', () => {
@@ -235,5 +312,37 @@ describe('deriveComposerStats', () => {
         decodeMs: 5000
       }
     })
+  })
+
+  it('deriveComposerStats 在 projectedTokens=0 时能正常生成 contextView', () => {
+    const pressure: ContextPressureProjection = {
+      projectedTokens: 0,
+      contextWindow: 200000
+    }
+    const res = deriveComposerStats(undefined, undefined, pressure)
+    expect(res.context).not.toBeNull()
+    expect(res.context?.usedTokens).toBe(0)
+    expect(res.context?.usedPercent).toBe(0)
+    expect(res.context?.label).toBe('0 / 200k (0%)')
+  })
+
+  it('deriveComposerStats 在仅有累计 tokenUsage 时宁可 context 为 null，绝不冒充当前上下文', () => {
+    const usage: TokenUsageProjection = {
+      totals: {
+        uncachedInputTokens: 50000,
+        cacheReadTokens: 100000,
+        cacheWriteTokens: 10000,
+        outputTokens: 40000
+      }
+    }
+    const pressureWithoutCurrentTokens: ContextPressureProjection = {
+      contextWindow: 200000
+    }
+    const res = deriveComposerStats(undefined, usage, pressureWithoutCurrentTokens)
+    // context 不得被历史累计占用冒充
+    expect(res.context).toBeNull()
+    // 但累计 tokens 详情和缓存数据正常提取
+    expect(res.tokensDetail?.totalTokens).toBe(200000)
+    expect(res.cache?.percent).toBe(67)
   })
 })

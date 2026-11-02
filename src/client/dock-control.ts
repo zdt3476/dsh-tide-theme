@@ -29,26 +29,53 @@ export interface DockHostProps {
 }
 
 export function createDockControl(props: DockHostProps) {
-  const model = createModelControl({ sessionId: props.sessionId, directories: props.directories, shared: props.shared, usage: props.usage, recordSelection: props.recordSelection })
-  // 组件实例在工厂期创建一次：渲染期重建会丢弹层状态。
+  const stats = createDockStats(props.shared)
+  const h = props.shared.h
+
+  // 底栏直接返回统计 Stats 组件，避免空左右配重与重复 derive 事实源。
+  return function DockControl(runtimeProps?: { useProjection?: (key: string) => unknown }) {
+    const useProj = runtimeProps?.useProjection ?? props.useProjection
+    const [config] = useSimplifyConfig(props.shared.hooks)
+    if (!config.dockStats) return null
+    return h(stats as never, { useProjection: useProj })
+  }
+}
+
+/**
+ * 输入框内部行动行专用的模型 + 思考等级控件（对应效果图里输入框左下角的位置）。
+ * 与 `createDockControl` 共用同一套控件实例工厂，只是不带统计 HUD。
+ */
+export function createModelSeat(props: DockHostProps) {
+  const model = createModelControl({
+    sessionId: props.sessionId,
+    directories: props.directories,
+    shared: props.shared,
+    usage: props.usage,
+    recordSelection: props.recordSelection
+  })
+  const h = props.shared.h
+  return function ModelSeat() {
+    const [config] = useSimplifyConfig(props.shared.hooks)
+    if (!config.modelControl) return null
+    return h('div', { 'data-dsh-simplify-seat': 'model' }, h(model as never, {}))
+  }
+}
+
+/** 输入框内部行动行专用的权限控件（对应效果图里输入框右下角的位置）。 */
+export function createPermissionSeat(props: DockHostProps) {
   const permission = createPermissionControl({
     sessionId: props.sessionId,
     remote: props.remote,
     session: props.session,
     shared: props.shared
   })
-  const stats = createDockStats(props.shared)
   const h = props.shared.h
-
-  return function DockControl(runtimeProps?: { useProjection?: (key: string) => unknown }) {
+  return function PermissionSeat(runtimeProps?: { useProjection?: (key: string) => unknown }) {
     const useProj = runtimeProps?.useProjection ?? props.useProjection
     const [config] = useSimplifyConfig(props.shared.hooks)
-    // slot 路径：标准 hook 读会话权限投影，作为 runtime 值下传。
     const projection = useProj('permissions') as { currentValue: string } | undefined
-    return h('div', { 'data-dsh-simplify-dock': '' },
-      h('div', { 'data-dsh-simplify-dock-left': '' }, config.modelControl ? h(model as never, {}) : null),
-      config.dockStats ? h(stats as never, { useProjection: useProj }) : null,
-      h('div', { 'data-dsh-simplify-dock-right': '' }, config.permissionControl ? h(permission as never, { permissionValue: projection?.currentValue }) : null)
-    )
+    if (!config.permissionControl) return null
+    return h('div', { 'data-dsh-simplify-seat': 'permission' },
+      h(permission as never, { permissionValue: projection?.currentValue }))
   }
 }

@@ -127,13 +127,6 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
   toggle.dataset.dshSimplifyGroupsToggle = ''
   controls.appendChild(toggle)
 
-  const pinButton = options.createElement('button') as HTMLButtonElement
-  pinButton.type = 'button'
-  pinButton.dataset.dshSimplifyPinToggle = ''
-  pinButton.textContent = options.locale('groups.pin')
-  pinButton.title = options.locale('groups.pinHint')
-  controls.appendChild(pinButton)
-
   // 侧栏独立小节分区分组（方案 A：Linear / Slack / Notion 风格）
   const pinnedHeader = options.createElement('div')
   pinnedHeader.className = 'dsh-simplify-sidebar-section is-pinned'
@@ -145,49 +138,75 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
   unpinnedHeader.dataset.dshSimplifySection = 'unpinned'
   unpinnedHeader.hidden = true
 
-  // 面板挂到 body：侧栏标题行是 overflow:hidden，放在里面会被裁成一条。
-  const panel = options.createElement('div')
-  panel.dataset.dshSimplifyPinPanel = ''
-  panel.hidden = true
-  document.body.appendChild(panel)
-
-  const placePanel = () => {
-    const rect = pinButton.getBoundingClientRect()
-    const width = panel.offsetWidth
-    const left = Math.min(Math.max(8, rect.right - width), window.innerWidth - width - 8)
-    panel.style.left = `${Math.round(left)}px`
-    panel.style.top = `${Math.round(rect.bottom + 6)}px`
-  }
-
-  const openPanel = () => {
-    renderPanel(collectGroups(slot))
-    panel.hidden = false
-    placePanel()
-  }
-
   const persistPinned = () => localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned]))
 
-  const renderPanel = (groups: GroupHandle[]) => {
-    panel.replaceChildren()
-    for (const group of groups) {
-      const item = options.createElement('button') as HTMLButtonElement
-      item.type = 'button'
-      item.dataset.dshSimplifyPinItem = group.id
-      item.dataset.active = pinned.has(group.id) ? 'true' : 'false'
-      item.textContent = `${pinned.has(group.id) ? '★ ' : '☆ '}${group.row.textContent?.trim().slice(0, 24) ?? group.id}`
-      item.addEventListener('click', (event) => {
-        event.stopPropagation()
-        if (pinned.has(group.id)) pinned.delete(group.id)
-        else pinned.add(group.id)
-        persistPinned()
-        apply()
-        renderPanel(collectGroups(slot))
-        // 选完即收起：置顶是低频操作，面板常驻会挡住列表。
-        panel.hidden = true
-      })
-      panel.appendChild(item)
+  // 监听用户点击工作区行的三点菜单（···），记录目标工作区 ID，
+  // 随后向原生弹出菜单中注入“置顶 / 取消置顶”操作项，彻底移除顶栏突兀按钮。
+  let currentMenuWorkspaceId: string | null = null
+
+  const onPointerDownCapture = (event: Event) => {
+    const target = event.target as Element | null
+    if (!target) return
+    const row = target.closest('[data-row-key^="workspace:"]')
+    if (row) {
+      const key = row.getAttribute('data-row-key')
+      if (key) {
+        currentMenuWorkspaceId = key.replace(/^workspace:/, '')
+      }
     }
   }
+  document.addEventListener('pointerdown', onPointerDownCapture, true)
+
+  const handleMenuCheck = () => {
+    const menus = document.querySelectorAll('[role="menu"]')
+    for (const menu of menus) {
+      if (menu.querySelector('[data-dsh-simplify-workspace-pin]') !== null) continue
+      const items = [...menu.querySelectorAll('[role="menuitem"]')]
+      const isWorkspaceMenu = items.some((it) => it.textContent?.includes('重命名') || it.textContent?.includes('Rename'))
+        && items.some((it) => it.textContent?.includes('删除工作区') || it.textContent?.includes('Delete workspace'))
+      if (!isWorkspaceMenu) continue
+
+      const wsId = currentMenuWorkspaceId
+        ?? document.querySelector('[data-row-key^="workspace:"][class*="menuOpen"]')?.getAttribute('data-row-key')?.replace(/^workspace:/, '')
+        ?? collectGroups(slot)[0]?.id
+      if (!wsId) continue
+
+      const isPinned = pinned.has(wsId)
+      const templateItem = items[0] as HTMLElement | undefined
+      const pinItem = options.createElement('button') as HTMLButtonElement
+      pinItem.type = 'button'
+      pinItem.className = templateItem ? templateItem.className : ''
+      pinItem.setAttribute('role', 'menuitem')
+      pinItem.dataset.dshSimplifyWorkspacePin = wsId
+
+      const starPath = isPinned
+        ? 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.56.56 0 0 0-.163-.505L1.71 6.745l4.052-.576a.53.53 0 0 0 .393-.288L8 2.223l1.846 3.658a.53.53 0 0 0 .393.288l4.052.575-2.906 2.77a.56.56 0 0 0-.163.506l.694 3.957-3.686-1.895a.5.5 0 0 0-.461 0z'
+        : 'M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z'
+      const iconSvg = `<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="margin-right:8px;flex:none;"><path d="${starPath}"/></svg>`
+      const text = isPinned ? options.locale('groups.unpinWorkspace') : options.locale('groups.pinWorkspace')
+
+      pinItem.innerHTML = `${iconSvg}<span>${text}</span>`
+
+      pinItem.addEventListener('click', (ev) => {
+        ev.stopPropagation()
+        if (pinned.has(wsId)) {
+          pinned.delete(wsId)
+        } else {
+          pinned.add(wsId)
+        }
+        persistPinned()
+        apply()
+        // 模拟关闭原生菜单
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      })
+
+      // 插入到菜单首项（在重命名之前）
+      menu.insertBefore(pinItem, menu.firstChild)
+    }
+  }
+
+  const menuObserver = new MutationObserver(handleMenuCheck)
+  menuObserver.observe(document.body, { childList: true, subtree: true })
 
   const originalOrders = new WeakMap<HTMLElement, string>()
   let frame = 0
@@ -271,9 +290,6 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       group.element.toggleAttribute('data-dsh-simplify-pinned', isPinned)
     }
 
-    if (pinned.size > 0) pinButton.title = `${options.locale('groups.pinHint')}（已置顶 ${pinned.size} 个）`
-    else pinButton.title = options.locale('groups.pinHint')
-
     const hidden = hiddenCount(ranked, config.sidebarUnpinnedLimit, config.sidebarPinnedLimit)
     toggle.hidden = hidden === 0 && !expanded
     const label = expanded
@@ -300,29 +316,6 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
     apply()
   })
 
-  pinButton.addEventListener('click', (event) => {
-    event.stopPropagation()
-    if (panel.hidden) openPanel()
-    else panel.hidden = true
-  })
-
-  const closeOnOutside = (event: Event) => {
-    if (panel.hidden) return
-    const target = event.target
-    if (target instanceof Element && (target.closest('[data-dsh-simplify-groups-controls]') !== null || target.closest('[data-dsh-simplify-pin-panel]') !== null)) return
-    panel.hidden = true
-  }
-  const closeOnKey = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && !panel.hidden) panel.hidden = true
-  }
-  const closeOnScroll = () => {
-    if (!panel.hidden) placePanel()
-  }
-  document.addEventListener('pointerdown', closeOnOutside, true)
-  document.addEventListener('keydown', closeOnKey, true)
-  window.addEventListener('scroll', closeOnScroll, true)
-  window.addEventListener('resize', closeOnScroll)
-
   const observer = new MutationObserver(schedule)
   observer.observe(slot, { childList: true, subtree: true })
   const unsubscribeWorkspaces = options.workspaces.subscribe(schedule)
@@ -333,13 +326,11 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
   return {
     unmount: () => {
       observer.disconnect()
+      menuObserver.disconnect()
       unsubscribeWorkspaces()
       unsubscribeSessions()
       unsubscribeConfig()
-      document.removeEventListener('pointerdown', closeOnOutside, true)
-      document.removeEventListener('keydown', closeOnKey, true)
-      window.removeEventListener('scroll', closeOnScroll, true)
-      window.removeEventListener('resize', closeOnScroll)
+      document.removeEventListener('pointerdown', onPointerDownCapture, true)
       if (frame !== 0) window.cancelAnimationFrame(frame)
       for (const group of collectGroups(slot)) {
         const order = originalOrders.get(group.element)
@@ -350,7 +341,6 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
         group.row.removeAttribute('data-dsh-simplify-count')
       }
       controls.remove()
-      panel.remove()
       pinnedHeader.remove()
       unpinnedHeader.remove()
     }

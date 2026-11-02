@@ -17,7 +17,6 @@ import { mountSidebarTabs } from './sidebar-tabs'
 import { mountSidebarFilter } from './sidebar-filter-mount'
 import { mountSidebarGroups } from './sidebar-groups'
 import type { ActivityStore, SessionActivitySnapshot, WorkspaceActivitySnapshot } from './sidebar-activity'
-import { mountHeroDock } from './hero-dock'
 import { mountStatColors } from './stat-colors-mount'
 import { mountTurnDuration } from './turn-duration'
 import { mountDelegationPanel } from './delegation-panel'
@@ -27,7 +26,7 @@ import { readLocalUsage, recordLocalUsage } from './usage-store'
 import { CURRENT_SESSION_KEY, readCurrentSessionId } from './hero-dock'
 import { readArchivedFilter, VIEW_STORE_KEY } from './view-state'
 import { withFallback } from './locale-fallback'
-import { createDockControl } from './dock-control'
+import { createDockControl, createModelSeat } from './dock-control'
 import { createPluginSettings } from './plugin-settings'
 import { loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
 import type { DockShared, H, ReactHooks } from './dock-shared'
@@ -98,6 +97,8 @@ const DICT_ZH: Record<string, string> = {
   'groups.collapse': '收起工作区',
   'groups.pin': '置顶',
   'groups.pinHint': '选择要置顶的工作区',
+  'groups.pinWorkspace': '置顶工作区',
+  'groups.unpinWorkspace': '取消置顶',
   'groups.pinnedTitle': '置顶',
   'groups.unpinnedTitle': '工作区',
   'model.placeholder': '选择模型',
@@ -123,6 +124,7 @@ const DICT_ZH: Record<string, string> = {
   'delegation.agent': '主 Agent',
   'delegation.batch': '第 {index} 次委派',
   'delegation.agents': '{count} 个子代理',
+  'delegation.agentsOne': '1 个子代理',
   'delegation.expand': '展开这次委派',
   'delegation.collapse': '收起这次委派',
   'delegation.coordinating': '正在协调 {count} 个委派任务',
@@ -132,6 +134,10 @@ const DICT_ZH: Record<string, string> = {
   'delegation.state.done': '已完成',
   'delegation.state.failed': '失败',
   'delegation.state.denied': '已拒绝',
+  'delegation.state.mixed': '部分完成',
+  'delegation.state.unknown': '未知',
+  'delegation.mixed': '{count} 个部分完成',
+  'delegation.unknown': '{count} 个未知',
   'delegation.failed': '{count} 个失败',
   'delegation.open': '打开子会话',
   'delegation.stop': '停止这个子代理',
@@ -160,6 +166,8 @@ const DICT_EN: Record<string, string> = {
   'groups.collapse': 'Collapse workspaces',
   'groups.pin': 'Pin',
   'groups.pinHint': 'Pick workspaces to pin',
+  'groups.pinWorkspace': 'Pin workspace',
+  'groups.unpinWorkspace': 'Unpin workspace',
   'groups.pinnedTitle': 'Pinned',
   'groups.unpinnedTitle': 'Workspaces',
   'model.placeholder': 'Select model',
@@ -185,6 +193,7 @@ const DICT_EN: Record<string, string> = {
   'delegation.agent': 'Main agent',
   'delegation.batch': 'Delegation {index}',
   'delegation.agents': '{count} subagents',
+  'delegation.agentsOne': '1 subagent',
   'delegation.expand': 'Expand this delegation',
   'delegation.collapse': 'Collapse this delegation',
   'delegation.coordinating': 'Coordinating {count} delegated tasks',
@@ -194,6 +203,10 @@ const DICT_EN: Record<string, string> = {
   'delegation.state.done': 'Completed',
   'delegation.state.failed': 'Failed',
   'delegation.state.denied': 'Denied',
+  'delegation.state.mixed': 'Mixed',
+  'delegation.state.unknown': 'Unknown',
+  'delegation.mixed': '{count} mixed',
+  'delegation.unknown': '{count} unknown',
   'delegation.failed': '{count} failed',
   'delegation.open': 'Open subagent session',
   'delegation.stop': 'Stop this subagent',
@@ -217,7 +230,12 @@ function installStyles(ctx: ClientCtx): void {
     tag.dataset.pluginCss = tagId
     tag.textContent = UI_CSS
     document.head.appendChild(tag)
-    return () => tag.remove()
+    return () => {
+      tag.remove()
+      if (typeof document !== 'undefined') {
+        document.body.removeAttribute('data-dsh-simplify-theme')
+      }
+    }
   }, 'simplify-theme: ui styles')
 }
 
@@ -322,37 +340,6 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
   }, 'simplify-theme: sidebar groups')
 
   ctx.effect(() => {
-    if (typeof document === 'undefined') return
-    const t = withFallback(ctx.locale.bind(PLUGIN_ID), DICT_ZH)
-    const reactModule = require('react') as unknown as { createElement: H }
-    const hero = mountHeroDock({
-      directories: ctx.modelDirectories,
-      remote: ctx.remote,
-      usage: () => collectUsage((ctx.sessions?.list.getSnapshot().byId ?? {}) as never, readLocalUsage()),
-      recordSelection: recordLocalUsage,
-      sessionOf: (sessionId) => ctx.sessions?.binding(sessionId)?.session,
-      permissionValueOf: (sessionId) => {
-        const session = ctx.sessions?.binding(sessionId)?.session as
-          | { projections?: { values?: () => Record<string, { currentValue?: string }> } }
-          | undefined
-        return session?.projections?.values?.().permissions?.currentValue
-      },
-      shared: {
-        h: reactModule.createElement,
-        hooks: require('react') as unknown as ReactHooks,
-        t: t as (key: string) => string
-      },
-      React: {
-        createRoot: (container: HTMLElement) => {
-          const reactDom = require('react-dom/client') as unknown as { createRoot: (c: HTMLElement) => { render: (n: unknown) => void; unmount: () => void } }
-          return reactDom.createRoot(container)
-        }
-      }
-    })
-    return () => hero?.dispose()
-  }, 'simplify-theme: hero dock')
-
-  ctx.effect(() => {
     const mount = mountStatColors()
     return () => mount?.unmount()
   }, 'simplify-theme: stat colors')
@@ -435,6 +422,42 @@ function registerDock(ctx: ClientCtx): void {
       return h(ref.current.control as never, { useProjection })
     }
   ))
+
+  // 模型与思考等级、权限按效果图放回输入框内部行动行：宿主原生就在这里预留了座位，
+  // 底栏因此只留统计 HUD，不再和控件挤同一行。
+  const seatProps = (entryProps: Record<string, unknown>) => {
+    const usage = () => collectUsage((ctx.sessions?.list.getSnapshot().byId ?? {}) as never, readLocalUsage())
+    return entryProps as unknown as {
+      sessionId: string
+      directories: ModelDirectories
+      remote: ClientCtx['remote']
+      useProjection: (key: string) => unknown
+      session: () => PermissionSession | undefined
+    }
+  }
+  const seatInject = (sessionId: string) => ({
+    sessionId,
+    directories: ctx.modelDirectories,
+    remote: { permissionPresets: { catalog: () => ctx.remote.permissionPresets.catalog() } },
+    session: () => ctx.sessions?.binding(sessionId)?.session
+  })
+
+  ctx.slots.inject('conversation.input.left', () => ctx.slots.register(
+    { name: 'conversation.input.left', id: 'simplify-model-seat', order: -10, inject: seatInject },
+    (entryProps: Record<string, unknown>) => {
+      const p = seatProps(entryProps)
+      const usage = () => collectUsage((ctx.sessions?.list.getSnapshot().byId ?? {}) as never, readLocalUsage())
+      const ref = hooks.useRef<{ sessionId: string; seat: ReturnType<typeof createModelSeat> } | null>(null)
+      if (ref.current === null || ref.current.sessionId !== p.sessionId) {
+        ref.current = {
+          sessionId: p.sessionId,
+          seat: createModelSeat({ sessionId: p.sessionId, directories: p.directories, remote: p.remote, useProjection: p.useProjection, session: p.session, shared, usage, recordSelection: recordLocalUsage })
+        }
+      }
+      return h(ref.current.seat as never, {})
+    }
+  ))
+
 }
 
 function registerPluginSettings(ctx: ClientCtx): void {
@@ -479,6 +502,33 @@ export function apply(ctx: ClientCtx): void {
   console.info(`[${PLUGIN_ID}] 已加载构建 ${BUILD}`)
   if (typeof document !== 'undefined') document.documentElement.dataset.dshSimplifyBuild = BUILD
   step('locale', () => ctx.locale.register(PLUGIN_ID, { zh: DICT_ZH, en: DICT_EN }))
+
+  // 独立管理 body 门控属性，不与 ctx.theme 服务时序强耦合：
+  // 即使宿主 theme 服务初始化延迟或未注入，依赖该属性的全局背景与卡片光晕依然能稳定生效！
+  ctx.effect(() => {
+    let currentConfig = loadSimplifyConfig()
+    const syncGate = () => {
+      if (typeof document !== 'undefined') {
+        if (currentConfig.themeOverrides) {
+          document.body.setAttribute('data-dsh-simplify-theme', '')
+        } else {
+          document.body.removeAttribute('data-dsh-simplify-theme')
+        }
+      }
+    }
+    syncGate()
+    const unsub = onSimplifyConfigChange((cfg) => {
+      currentConfig = cfg
+      syncGate()
+    })
+    return () => {
+      unsub()
+      if (typeof document !== 'undefined') {
+        document.body.removeAttribute('data-dsh-simplify-theme')
+      }
+    }
+  }, 'simplify-theme: body gate')
+
   if (ctx.theme !== undefined) {
     step('theme', () => {
       let currentConfig = loadSimplifyConfig()

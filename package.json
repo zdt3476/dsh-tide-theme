@@ -6,7 +6,7 @@
     "access": "public"
   },
   "type": "module",
-  "description": "给 DeepSeek Harness 的极简主题，附带侧栏分页与筛选、输入框下方模型/权限控件、子代理委派图等界面增强。",
+  "description": "潮汐玻璃（Tide Glass）——给 DeepSeek Harness 的冰蓝玻璃主题，附带侧栏分页与筛选、输入框下方模型/权限控件、底栏性能 HUD、子代理委派图等界面增强。",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zdt3476/dsh-simplify-theme.git"
@@ -60,7 +60,8 @@
     "deepseek-harness",
     "deepseek",
     "theme",
-    "minimal"
+    "glass",
+    "tide-glass"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0",

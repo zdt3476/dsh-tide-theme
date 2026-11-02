@@ -25,12 +25,25 @@ export function isDelegationTool(name: string | null): boolean {
   return name !== null && (/(^|[_-])subagent([_-]|$)/i.test(name) || name === 'spawn_teammate')
 }
 
+/** 父会话 id 归一：宿主不同位置可能带或不带 `session-` 前缀。 */
+function normalizeSessionId(id: string | undefined): string | undefined {
+  return id === undefined ? undefined : id.replace(/^session-/, '')
+}
+
+function belongsToParent(row: SessionRow | undefined, parentId: string | undefined): boolean {
+  if (row === undefined) return false
+  if (parentId === undefined) return true
+  return normalizeSessionId(row.parentId) === normalizeSessionId(parentId)
+}
+
 export function pickSubagentIds(text: string, rows: SessionRows, parentId: string | undefined): string[] {
   const ids: string[] = []
   for (const match of text.matchAll(UUID)) {
     const id = match[0].toLowerCase()
     const row = rows[id]
-    if (row === undefined || row.origin !== 'subagent' || row.parentId !== parentId) continue
+    // 与 matchSubagentId 共用同一套父会话归一规则：此前这里要求严格相等，
+    // 一旦父 id 一侧带 session- 前缀，UUID 匹配就静默失效、退回文本猜测。
+    if (row === undefined || row.origin !== 'subagent' || !belongsToParent(row, parentId)) continue
     if (!ids.includes(id)) ids.push(id)
   }
   return ids
@@ -40,7 +53,10 @@ export function pickSubagentIds(text: string, rows: SessionRows, parentId: strin
  * 匹配委派工具行对应的子代理：
  * 1. 显式 UUID 匹配（展开状态、提示词或测试环境携带）。
  * 2. 描述/标题匹配（折叠状态下宿主工具行显示的 description / title）。
- * 3. 时序认领（同父会话下按创建时序推进认领），全局单次认领，避免跨轮或多次重复。
+ *
+ * 刻意不做时序认领：折叠行文本通常只含「创建子智能体」这类泛化标题，
+ * 盲目按顺序认领会把本回合的卡片错绑到后续回合的子代理上（甚至绑到
+ * 因并发上限而失败的调用上）。匹配不到就宁缺毋滥，保持图文一致。
  */
 export function matchSubagentId(
   rowText: string,
@@ -50,6 +66,7 @@ export function matchSubagentId(
   candidateIds?: readonly string[],
   catalogEntries?: ReadonlyArray<{ id: string; label?: string }>
 ): string | undefined {
+  // 父会话 id 归一比较（与 pickSubagentIds 共用同一套规则）。
   const matchesParent = (p: string | undefined) =>
     parentId === undefined || p === parentId || (p !== undefined && p.replace(/^session-/, '') === parentId.replace(/^session-/, ''))
 
@@ -67,7 +84,7 @@ export function matchSubagentId(
         .filter((entry): entry is [string, SessionRow] => entry[1] !== undefined && entry[1].origin === 'subagent' && matchesParent(entry[1].parentId))
         .map(([id, row]) => ({ id, row }))
 
-  // 2. 描述 / 标题包含匹配（支持 SessionRow.displayTitle、title 以及 subagentCatalog 原始 label）
+  // 2. 描述 / 标题匹配（支持 SessionRow.displayTitle、title 以及 subagentCatalog 原始 label）
   const labelById = new Map<string, string>()
   if (catalogEntries !== undefined) {
     for (const entry of catalogEntries) {
@@ -77,24 +94,24 @@ export function matchSubagentId(
     }
   }
 
+  // 用"最长命中优先"而不是"遍历顺序第一个命中"：子代理标题常常互为前缀
+  // （Alpha / Alpha-2、Research / Research-2），按顺序取第一个会把卡片挂错人。
+  let best: { id: string; score: number } | undefined
+  const consider = (id: string, label: string | undefined) => {
+    if (typeof label !== 'string' || label.length < 2) return
+    if (!rowText.includes(label)) return
+    // 整行就是该标题（去掉首尾空白）时优先级最高，其次是更长的标题。
+    const exact = rowText.trim() === label.trim()
+    const score = (exact ? 1_000_000 : 0) + label.length
+    if (best === undefined || score > best.score) best = { id, score }
+  }
+
   for (const { id, row } of candidates) {
     if (claimed.has(id)) continue
-    const title = row.displayTitle ?? (row as { title?: string }).title ?? labelById.get(id)
-    if (typeof title === 'string' && title.length >= 2 && rowText.includes(title)) {
-      return id
-    }
-    const label = labelById.get(id)
-    if (label !== undefined && label.length >= 2 && rowText.includes(label)) {
-      return id
-    }
+    consider(id, row.displayTitle ?? (row as { title?: string }).title ?? labelById.get(id))
+    consider(id, labelById.get(id))
   }
-
-  // 3. 时序顺序认领
-  for (const { id } of candidates) {
-    if (!claimed.has(id)) return id
-  }
-
-  return undefined
+  return best?.id
 }
 
 export function displayTitleOf(node: DelegationNode, index: number): string {
@@ -109,7 +126,7 @@ export function formatDelegationDuration(ms: number, locale: (key: string) => st
   return rest === 0 ? `${minutes}${locale('duration.m')}` : `${minutes}${locale('duration.m')} ${rest}${locale('duration.s')}`
 }
 
-export type Abnormal = 'failed' | 'denied' | null
+export type Abnormal = 'failed' | 'denied' | 'unknown' | null
 
 export function errorReasonOf(row: Element | null, limit = 160): string | undefined {
   const text = row?.querySelector('[data-error]')?.textContent?.trim()
@@ -123,7 +140,14 @@ export function delegationNodesFor(ids: readonly string[], abnormal: Abnormal, r
   for (const id of ids) {
     const node = toDelegationNode(id, rows[id], now)
     if (node === null) continue
-    return [abnormal === null ? node : { ...node, status: abnormal }]
+    if (abnormal === 'failed' || abnormal === 'denied') {
+      return [{ ...node, status: abnormal }]
+    }
+    if (abnormal === 'unknown') {
+      // 工具行未知 state 不要直接当成功；child 如果已知 running 则以 child 为主保留 running，若为 done 则转为 unknown
+      return [{ ...node, status: node.status === 'done' ? 'unknown' : node.status }]
+    }
+    return [node]
   }
   return []
 }
@@ -140,6 +164,7 @@ export interface BatchCounts {
   running: number
   failed: number
   denied: number
+  unknown: number
 }
 
 export function batchCounts(members: readonly BatchMember[]): BatchCounts {
@@ -147,13 +172,27 @@ export function batchCounts(members: readonly BatchMember[]): BatchCounts {
   let running = 0
   let failed = 0
   let denied = 0
+  let unknown = 0
   for (const { node } of members) {
     if (node.status === 'running') running += 1
     else if (node.status === 'done') done += 1
     else if (node.status === 'failed') failed += 1
-    else denied += 1
+    else if (node.status === 'denied') denied += 1
+    else unknown += 1
   }
-  return { total: members.length, done, running, failed, denied }
+  return { total: members.length, done, running, failed, denied, unknown }
+}
+
+export type RootState = 'running' | 'done' | 'failed' | 'denied' | 'mixed' | 'unknown'
+
+export function aggregateBatchState(counts: BatchCounts): RootState {
+  if (counts.running > 0) return 'running'
+  if (counts.total === 0) return 'done'
+  if (counts.done === counts.total) return 'done'
+  if (counts.failed === counts.total) return 'failed'
+  if (counts.denied === counts.total) return 'denied'
+  if (counts.unknown === counts.total) return 'unknown'
+  return 'mixed'
 }
 
 export interface DelegationPanelOptions {
@@ -174,8 +213,6 @@ export interface DelegationPanelHandle {
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
-/** 主干左侧预留的间距（与参考实现的 34px 连接列一致）。 */
-const GAP = 34
 const STEP_PROCESS = '[data-step-process]'
 /** 宿主使用相同的 data-chat-turn 值标记同一回合的多个兄弟节点。 */
 function turnKeyOf(anchor: Element): string | Element {
@@ -183,36 +220,47 @@ function turnKeyOf(anchor: Element): string | Element {
 }
 
 /**
- * 按真实几何画连线：主干 + 每个节点的分支 + 主 Agent 的横线。
- * 用测量的像素坐标绘制，不依赖任何写死偏移，节点高矮不一也不会错开。
+ * 按真实几何画连线：Orchestrator 枢纽底部 → 每条分支一条贝塞尔弧线 → 落到子代理卡片顶边。
+ * 用测量到的像素坐标绘制，卡片换行、列数变化都不会错位。
  */
-export function paintConnectors(agents: HTMLElement, svg: SVGSVGElement): void {
-  const box = agents.getBoundingClientRect()
-  const nodes = [...agents.children].filter((child): child is HTMLElement => child instanceof HTMLElement && !child.hasAttribute('data-dsh-simplify-lines'))
+export function paintConnectors(stage: HTMLElement, hub: HTMLElement, agents: HTMLElement, svg: SVGSVGElement): void {
+  const stageBox = stage.getBoundingClientRect()
+  const hubBox = hub.getBoundingClientRect()
+  svg.setAttribute('viewBox', `0 0 ${stageBox.width} ${stageBox.height}`)
+  svg.setAttribute('width', String(stageBox.width))
+  svg.setAttribute('height', String(stageBox.height))
+
+  const nodes = [...agents.children]
+    .filter((child): child is HTMLElement => child instanceof HTMLElement && !child.hasAttribute('data-dsh-simplify-lines'))
   if (nodes.length === 0) return
-  const centers = nodes.map((node) => {
+
+  // 外侧分支从枢纽侧缘引出，内侧从底部引出，对齐参考图的柔和扇出曲线。
+  const trunkX = hubBox.left - stageBox.left + hubBox.width / 2
+  const trunkTop = hubBox.bottom - stageBox.top
+  const targets = nodes.map((node) => {
     const rect = node.getBoundingClientRect()
-    return { y: rect.top - box.top + rect.height / 2, left: rect.left - box.left }
+    return {
+      x: rect.left - stageBox.left + rect.width / 2,
+      y: rect.top - stageBox.top
+    }
   })
-  const trunkX = 1
-  const first = centers[0]
-  const last = centers[centers.length - 1]
-  // 主 Agent 的横线固定在主干正中。仅当某个分支几乎就在正中（差 8px 内）时用它，
-  // 避免同一高度出现两条平行线；否则保持正中，不吸附到某个子代理分支上。
-  const center = (first.y + last.y) / 2
-  const nearest = centers.reduce((best, c) => (Math.abs(c.y - center) < Math.abs(best - center) ? c.y : best), first.y)
-  const mid = Math.abs(nearest - center) <= 8 ? nearest : center
-  const width = box.width + GAP
-  svg.setAttribute('viewBox', `${-GAP} 0 ${width} ${box.height}`)
-  svg.setAttribute('width', String(width))
-  svg.setAttribute('height', String(box.height))
-  const d: string[] = [
-    // 主 Agent → 主干
-    `M ${-GAP + 1} ${mid} H ${trunkX}`,
-    // 主干
-    `M ${trunkX} ${first.y} V ${last.y}`
-  ]
-  for (const center of centers) d.push(`M ${trunkX} ${center.y} H ${center.left}`)
+  // 卡片按响应式网格排布（单行、2列或4列）。为避免连线穿过上方卡片，
+  // 连线优先且平滑连接首行所有卡片顶边，后续行卡片按分组在下方陈列；
+  // 不绘制孤立无目标的悬空下探短棍。
+  const topY = Math.min(...targets.map((target) => target.y))
+  const firstRowTargets = targets.filter((target) => Math.abs(target.y - topY) <= 6)
+  const hubLeft = hubBox.left - stageBox.left
+  const hubRight = hubBox.right - stageBox.left
+  const d: string[] = []
+
+  for (const target of firstRowTargets) {
+    const outside = target.x < hubLeft || target.x > hubRight
+    const startX = outside ? (target.x < trunkX ? hubLeft : hubRight) : trunkX
+    const startY = outside ? trunkTop - hubBox.height * 0.4 : trunkTop
+    const controlY = startY + (target.y - startY) * 0.35
+    d.push(`M ${startX} ${startY} C ${startX} ${controlY}, ${target.x} ${controlY}, ${target.x} ${target.y}`)
+  }
+
   const path = svg.querySelector('path')
   if (path !== null) path.setAttribute('d', d.join(' '))
 }
@@ -240,8 +288,29 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string): HTMLEl
   return node
 }
 
-const ICON_TARGET = ['M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2', 'M8 5a3 3 0 100 6 3 3 0 000-6z']
+const ICON_TARGET = ['M8 1.5l6 3.5v7l-6 3.5-6-3.5v-7l6-3.5z', 'M8 1.5v7l6 3.5', 'M8 8.5l-6 3.5']
 const ICON_BOT = ['M4 5.5h8a1.5 1.5 0 011.5 1.5v4A1.5 1.5 0 0112 12.5H4A1.5 1.5 0 012.5 11V7A1.5 1.5 0 014 5.5z', 'M8 3v2.5', 'M6 8.5h.01M10 8.5h.01']
+const ICON_CODE = ['M5.5 4.5L2 8l3.5 3.5', 'M10.5 4.5L14 8l-3.5 3.5', 'M9 3.5l-2 9']
+const ICON_RESEARCH = ['M7 2.5a4.5 4.5 0 102.8 8l3.5 3.5 1.2-1.2-3.5-3.5A4.5 4.5 0 007 2.5z']
+const ICON_ANALYSIS = ['M3 13.5h10', 'M5 11.5v-3', 'M8 11.5v-6', 'M11 11.5v-4']
+const ICON_WRITER = ['M3.5 3.5h9v10h-9z', 'M6 6.5h4', 'M6 9h4']
+
+export function classifyAgentTheme(title: string): 'purple' | 'green' | 'orange' | 'blue' {
+  const lower = title.toLowerCase()
+  if (lower.includes('research') || lower.includes('search') || lower.includes('搜索') || lower.includes('调研')) return 'purple'
+  if (lower.includes('code') || lower.includes('debug') || lower.includes('代码') || lower.includes('实现') || lower.includes('修复')) return 'green'
+  if (lower.includes('analy') || lower.includes('data') || lower.includes('分析') || lower.includes('排查') || lower.includes('指标')) return 'orange'
+  return 'blue'
+}
+
+function iconForTheme(theme: 'purple' | 'green' | 'orange' | 'blue'): string[] {
+  switch (theme) {
+    case 'purple': return ICON_RESEARCH
+    case 'green': return ICON_CODE
+    case 'orange': return ICON_ANALYSIS
+    case 'blue': return ICON_WRITER
+  }
+}
 
 export function mountDelegationPanel(options: DelegationPanelOptions): DelegationPanelHandle | null {
   if (typeof document === 'undefined') return null
@@ -269,49 +338,86 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
 
   const nodeView = (member: BatchMember, index: number): HTMLElement => {
     const { node } = member
-    const row = el('div', `subagent-topology-node outcome-${node.status === 'running' ? 'running' : node.status === 'failed' ? 'failed' : node.status === 'denied' ? 'denied' : 'completed'}`)
+    const theme = classifyAgentTheme(node.title)
+    const outcomeClass = node.status === 'running'
+      ? 'outcome-running'
+      : node.status === 'failed'
+        ? 'outcome-failed'
+        : node.status === 'denied'
+          ? 'outcome-denied'
+          : node.status === 'unknown'
+            ? 'outcome-unknown'
+            : 'outcome-completed'
+    const row = el('div', `subagent-topology-node ${outcomeClass}`)
     row.setAttribute('role', 'listitem')
+    row.setAttribute('data-agent-theme', theme)
     const actions = el('div', 'subagent-topology-node-actions')
     const button = el('button', 'subagent-topology-node-header')
     button.type = 'button'
     button.title = [displayTitleOf(node, index), node.model ?? '', member.reason ?? ''].filter(Boolean).join(' · ')
     button.addEventListener('click', () => options.openSession(node.id))
 
-    const avatar = el('span', 'subagent-topology-avatar')
+    const avatar = el('span', `subagent-topology-avatar is-${theme}`)
     avatar.setAttribute('aria-hidden', 'true')
-    avatar.append(icon(ICON_BOT, 15))
-    const statusIcon = el('span', 'subagent-topology-status-icon')
-    statusIcon.append(node.status === 'done'
-      ? icon(['M4 8.5l2.5 2.5L12 5'], 8)
-      : node.status === 'running' ? el('span') : icon(['M8 4.5v4', 'M8 11h.01'], 8))
-    avatar.append(statusIcon)
+    avatar.append(icon(iconForTheme(theme), 15))
+
+    // 卡片版式（对齐参考图）：顶行「方形图标 + 状态芯片」两端对齐，标题独占一行拿到完整宽度，
+    // 其下依次是模型徽标与任务 Checklist。
+    const stateKey = `delegation.state.${node.status}`
+    const localizedState = options.locale(stateKey)
+    const stateText = localizedState !== stateKey
+      ? localizedState
+      : (node.status === 'running'
+          ? 'Running'
+          : node.status === 'failed'
+            ? 'Failed'
+            : node.status === 'denied'
+              ? 'Denied'
+              : node.status === 'unknown'
+                ? 'Unknown'
+                : 'Done')
+    const duration = node.durationMs === undefined ? '' : ` · ${formatDelegationDuration(node.durationMs, options.locale)}`
+    const statusBadge = el('span', 'subagent-topology-status-badge')
+    statusBadge.append(head(`✦ ${stateText}${duration}`, 'subagent-topology-node-status'))
+
+    const topRow = el('span', 'subagent-topology-node-top')
+    topRow.append(avatar, statusBadge)
 
     const copy = el('span', 'subagent-topology-node-copy')
-    const titleRow = el('span', 'subagent-topology-node-title-row')
-    titleRow.append(head(displayTitleOf(node, index), 'subagent-topology-node-title'))
-    if (node.model !== undefined || node.effort !== undefined) {
+    copy.append(topRow, head(displayTitleOf(node, index), 'subagent-topology-node-title'))
+
+    const hasModel = typeof node.model === 'string' && node.model.trim() !== ''
+    const hasEffort = typeof node.effort === 'string' && node.effort.trim() !== ''
+    if (hasModel || hasEffort) {
       const model = el('span', 'subagent-topology-node-model')
-      model.title = [node.model ?? '', node.effort ?? ''].filter(Boolean).join(' · ')
-      if (node.model !== undefined) model.append(head(node.model, 'subagent-topology-node-model-name'))
-      if (node.effort !== undefined) model.append(head(` ${node.effort}`, 'subagent-topology-node-thinking'))
-      titleRow.append(model)
+      model.title = [hasModel ? node.model : '', hasEffort ? node.effort : ''].filter(Boolean).join(' · ')
+      if (hasModel && node.model !== undefined) model.append(head(node.model, 'subagent-topology-node-model-name'))
+      if (hasEffort && node.effort !== undefined) model.append(head(` ${node.effort}`, 'subagent-topology-node-thinking'))
+      copy.append(model)
     }
-    const stateText = node.status === 'running'
-      ? options.locale('delegation.state.running')
-      : node.status === 'failed'
-        ? options.locale('delegation.state.failed')
-        : node.status === 'denied' ? options.locale('delegation.state.denied') : options.locale('delegation.state.done')
-    const duration = node.durationMs === undefined ? '' : ` · ${formatDelegationDuration(node.durationMs, options.locale)}`
-    titleRow.append(head(`${stateText}${duration}`, 'subagent-topology-node-status'))
-    copy.append(titleRow)
-    if (member.reason !== undefined) copy.append(head(member.reason, 'subagent-topology-node-summary'))
-    if (node.steps !== undefined) copy.append(head(options.locale('delegation.steps', { count: node.steps }), 'subagent-topology-node-steps'))
-    button.append(avatar, copy)
-    if (node.status === 'running') {
-      const spinner = el('span', 'subagent-topology-spinner')
-      spinner.setAttribute('aria-hidden', 'true')
-      button.append(spinner)
+
+    // 运行数据与结果：步数为真实执行步数，失败原因额外警示；不伪造已完成清单勾选。
+    const checklist = el('div', 'subagent-topology-checklist')
+    if (node.steps !== undefined) {
+      const stepItem = el('div', 'subagent-checklist-item')
+      const stepIndicator = icon(['M2.5 5h11', 'M2.5 8h7', 'M2.5 11h9'], 10)
+      stepIndicator.setAttribute('aria-hidden', 'true')
+      const stepRaw = options.locale('delegation.steps', { count: node.steps })
+      const stepText = typeof stepRaw === 'function' ? (stepRaw as Function)({ count: node.steps }) : String(stepRaw)
+      stepItem.append(stepIndicator, head(stepText, 'subagent-topology-node-steps'))
+      checklist.append(stepItem)
     }
+    if (member.reason !== undefined) {
+      const failItem = el('div', 'subagent-checklist-item is-error')
+      const cross = el('span', 'subagent-check-icon is-error')
+      cross.setAttribute('aria-hidden', 'true')
+      cross.textContent = '✖'
+      failItem.append(cross, head(member.reason, 'subagent-topology-node-summary'))
+      checklist.append(failItem)
+    }
+    if (checklist.children.length > 0) copy.append(checklist)
+
+    button.append(copy)
     actions.append(button)
     if (node.status === 'running' && options.cancelSession !== undefined && options.canCancel?.(node.id) === true) {
       const stop = el('button', 'subagent-stop-button')
@@ -341,9 +447,18 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     summaryIcon.append(icon(ICON_TARGET, 13))
     const summaryLabel = head(options.locale('delegation.batch', { index }), 'subagent-topology-summary-label')
     const summaryCounts = el('span', 'subagent-topology-summary-counts')
-    const parts = [options.locale('delegation.agents', { count: counts.total })]
+    // 单数单独成句：英文 "1 subagents" 是明显的语法错误，中文也缺"1 个子代理"的读法。
+    // 若宿主字典尚未提供单数键，退回普通复数键（而不是退化成裸数字）。
+    const singularKey = 'delegation.agentsOne'
+    const pluralKey = 'delegation.agents'
+    const wanted = counts.total === 1 ? singularKey : pluralKey
+    let phrase = options.locale(wanted, { count: counts.total })
+    if (phrase === wanted) phrase = options.locale(pluralKey, { count: counts.total })
+    if (phrase === pluralKey) phrase = String(counts.total)
+    const parts = [phrase]
     if (counts.done > 0) parts.push(`${counts.done} ${options.locale('delegation.state.done')}`)
     if (counts.running > 0) parts.push(`${counts.running} ${options.locale('delegation.state.running')}`)
+    if (counts.unknown > 0) parts.push(`${counts.unknown} ${options.locale('delegation.state.unknown')}`)
     summaryCounts.textContent = parts.join(' · ')
     if (counts.failed > 0) {
       const alert = el('span', 'subagent-topology-summary-alert')
@@ -361,21 +476,49 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     summary.append(summaryIcon, summaryLabel, summaryCounts, chevron)
 
     const detail = el('div', 'subagent-topology-detail')
+    const stage = el('div', 'subagent-topology-stage')
     const root = el('div', 'subagent-topology-root')
+
+    // 顶部发光微小箭头指示器：采用内联 SVG 矢量箭头代替 Unicode 字符
+    const topArrow = el('span', 'subagent-orchestrator-arrow')
+    topArrow.setAttribute('aria-hidden', 'true')
+    topArrow.append(icon(['M8 12.5V3.5', 'M4.5 7L8 3.5 11.5 7'], 11))
+    root.append(topArrow)
+
     const rootIcon = el('span', 'subagent-topology-root-icon')
     rootIcon.setAttribute('aria-hidden', 'true')
-    rootIcon.append(icon(ICON_TARGET, 16))
+    rootIcon.append(icon(ICON_TARGET, 18))
+
     const copy = el('span', 'subagent-topology-root-copy')
-    copy.append(head(options.locale('delegation.agent'), ''))
-    copy.firstElementChild!.setAttribute('data-dsh-simplify-root-title', '')
-    const detailText = el('span')
-    detailText.textContent = options.locale('delegation.coordinating', { count: members.length })
-    copy.append(detailText)
+    const rootTitleRow = el('div', 'subagent-root-title-row')
+    const rootTitle = head(options.locale('delegation.agent') || 'Orchestrator', '')
+    rootTitle.setAttribute('data-dsh-simplify-root-title', '')
+    const activeChip = el('span', 'subagent-active-chip')
+    activeChip.dataset.running = String(counts.running > 0)
+    const rootState = aggregateBatchState(counts)
+    activeChip.dataset.state = rootState
+    const stateKey = `delegation.state.${rootState}`
+    const localizedState = options.locale(stateKey)
+    const stateText = localizedState !== stateKey
+      ? localizedState
+      : (rootState === 'mixed'
+          ? 'Mixed'
+          : rootState === 'unknown'
+            ? 'Unknown'
+            : rootState)
+    activeChip.textContent = `✦ ${stateText}`
+    rootTitleRow.append(rootTitle, activeChip)
+
+    const detailText = el('span', 'subagent-root-sub')
+    detailText.textContent = options.locale('delegation.coordinating', { count: members.length }) || 'Plans · Delegates · Synthesizes'
+    copy.append(rootTitleRow, detailText)
     root.append(rootIcon, copy)
-    const connector = el('span', 'subagent-topology-connector')
-    connector.setAttribute('aria-hidden', 'true')
+
     const agents = el('div', 'subagent-topology-agents')
     agents.setAttribute('role', 'list')
+    // 网格列数由真实成员数决定（1/2/3/4 列），否则单个子代理会被塞进
+    // 固定 4 列的网格里、只占 1/4 宽度，看起来像缺了三张卡。
+    agents.dataset.count = String(Math.min(4, Math.max(1, members.length)))
     members.forEach((member, memberIndex) => agents.append(nodeView(member, memberIndex)))
     const svg = document.createElementNS(SVG_NS, 'svg')
     svg.setAttribute('data-dsh-simplify-lines', '')
@@ -384,13 +527,13 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     const path = document.createElementNS(SVG_NS, 'path')
     path.setAttribute('fill', 'none')
     svg.append(path)
-    agents.append(svg)
-    detail.append(root, connector, agents)
+    stage.append(svg, root, agents)
+    detail.append(stage)
 
     // 连线全部由 paintConnectors 按真实几何绘制；展开后才可测量，隐藏时跳过。
     const repaint = () => {
       if (detail.offsetParent === null) return
-      paintConnectors(agents, svg)
+      paintConnectors(stage, root, agents, svg)
     }
     painters.set(host, repaint)
 
@@ -500,7 +643,13 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
           const ids = matchedId !== undefined ? [matchedId] : []
           if (matchedId !== undefined) claimed.add(matchedId)
           const rawState = row.getAttribute('data-state')
-          const abnormal: Abnormal = rawState === 'error' ? 'failed' : rawState === 'denied' ? 'denied' : null
+          const abnormal: Abnormal = rawState === 'error'
+            ? 'failed'
+            : rawState === 'denied'
+              ? 'denied'
+              : (rawState === 'ok' || rawState === 'done' || rawState === 'success' || rawState === 'running' || rawState === 'pending' || rawState === null)
+                ? null
+                : 'unknown'
           const nodes = delegationNodesFor(ids, abnormal, rows, now)
           // 同一次扇出里同一个子代理只展示一次。
           if (nodes.length === 0 || seen.has(nodes[0].id)) continue
@@ -514,6 +663,13 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
           row.setAttribute(SOURCE_ATTR, '')
           live.add(row)
         }
+        // 同批内按子代理目录/创建顺序排列，而不是按工具行在 DOM 里出现的偶然顺序；
+        // 并行派发时若按 DOM 顺序，卡片很容易与真实子代理错位。
+        const orderOf = (id: string): number => {
+          const at = candidateIds.indexOf(id)
+          return at === -1 ? Number.MAX_SAFE_INTEGER : at
+        }
+        members.sort((a, b) => orderOf(a.node.id) - orderOf(b.node.id))
         pending.push({ anchor: group.anchor, members })
       }
     }

@@ -113,11 +113,6 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
         description: '在输入框左下方提供供应商分类模型面板及平滑思考等级（Reasoning Effort）调节滑块。'
       },
       {
-        key: 'permissionControl',
-        title: '权限预设快捷切换控件',
-        description: '在输入框右下方提供只读/编辑/全权限预设的快捷切换胶囊。'
-      },
-      {
         key: 'turnDuration',
         title: '每轮回答实际耗时徽标',
         description: '在每一轮模型回复操作栏尾部常驻显示该轮端到端实际耗时。'
@@ -126,12 +121,12 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
   },
   {
     id: 'theme',
-    title: '主题风格层级',
+    title: '潮汐玻璃主题',
     items: [
       {
         key: 'themeOverrides',
-        title: '极简中性化 Token 覆盖',
-        description: '去除投影、毛玻璃、弱化装饰性描边并收紧圆角；关闭此项将完全恢复 DSH 原生主题皮肤。'
+        title: '潮汐玻璃主题材质',
+        description: '为底栏 HUD、用量看板与委派图套用冰蓝玻璃材质（径向微光、定向投影、发丝描边与彩色图标）；关闭此项后这些组件回落到 DSH 原生外观。'
       }
     ]
   }
@@ -169,11 +164,11 @@ export function createPluginSettings(shared: DockShared) {
       // 头部说明
       h('div', { className: 'dsh-simplify-settings-head' },
         h('div', { className: 'dsh-simplify-settings-title-wrap' },
-          h('h4', { className: 'dsh-simplify-settings-title' }, '极简主题与增强功能配置'),
+          h('h4', { className: 'dsh-simplify-settings-title' }, '潮汐玻璃 · 主题与增强功能配置'),
           h('span', { className: 'dsh-simplify-settings-badge' }, '即时生效')
         ),
         h('p', { className: 'dsh-simplify-settings-desc' },
-          '可视化切换各项界面增强与显示模块。所有设置实时保存在本地，无需重启应用或手动编辑配置文件。'
+          '可视化切换各项界面增强与显示模块。主题材质开启时套用冰蓝玻璃皮肤，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
         )
       ),
 
