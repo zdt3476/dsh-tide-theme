@@ -95,20 +95,20 @@ if (createServer && chromium) {
       // 1. 调用真实的 apply 激活插件
       apply(ctx)
 
-      // 初始状态验证：body 应具有 data-dsh-simplify-theme
-      const initialHasGate = document.body.hasAttribute('data-dsh-simplify-theme')
+      // 初始状态验证：body 应具有 data-dsh-tide-theme
+      const initialHasGate = document.body.hasAttribute('data-dsh-tide-theme')
       const initialOverrideCalls = tokenOverrideCalls
 
       // 2. 模拟配置事件：关闭 themeOverrides
       saveSimplifyConfig({ themeOverrides: false })
 
-      const disabledHasGate = document.body.hasAttribute('data-dsh-simplify-theme')
+      const disabledHasGate = document.body.hasAttribute('data-dsh-tide-theme')
       const disabledDisposerCalls = tokenDisposerCalls
 
       // 3. 模拟配置事件：重新开启 themeOverrides
       saveSimplifyConfig({ themeOverrides: true })
 
-      const reenabledHasGate = document.body.hasAttribute('data-dsh-simplify-theme')
+      const reenabledHasGate = document.body.hasAttribute('data-dsh-tide-theme')
       const reenabledOverrideCalls = tokenOverrideCalls
 
       // 4. 清理卸载
@@ -116,7 +116,7 @@ if (createServer && chromium) {
         if (typeof cleanup === 'function') cleanup()
       }
 
-      const finalHasGate = document.body.hasAttribute('data-dsh-simplify-theme')
+      const finalHasGate = document.body.hasAttribute('data-dsh-tide-theme')
       const finalDisposerCalls = tokenDisposerCalls
 
       return {
@@ -131,7 +131,7 @@ if (createServer && chromium) {
       }
     })
 
-    assert.equal(result.initialHasGate, true, '初始激活应设置 data-dsh-simplify-theme')
+    assert.equal(result.initialHasGate, true, '初始激活应设置 data-dsh-tide-theme')
     assert.equal(result.initialOverrideCalls, 1, '初始激活应调用 overrideTokens 一次')
     assert.equal(result.disabledHasGate, false, '关闭 themeOverrides 后必须移除 body 门控')
     assert.equal(result.disabledDisposerCalls, 1, '关闭 themeOverrides 后必须执行 token disposer')

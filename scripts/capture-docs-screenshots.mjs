@@ -29,23 +29,23 @@ const SHELL_CSS = `
 
 /**
  * 侧栏演示壳：层级与宿主一致（标题 / tabs / 搜索 / 工作区列表）。
- * 会话数走 `data-dsh-simplify-count`，由插件自身的 ::after 渲染，不是手画的。
+ * 会话数走 `data-dsh-tide-count`，由插件自身的 ::after 渲染，不是手画的。
  */
 const SIDEBAR_MARKUP = `
-  <div data-slot="sidebar.workspaces" style="background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsh-simplify-glass-border);border-radius:12px;padding:12px;width:268px;box-sizing:border-box;">
+  <div data-slot="sidebar.workspaces" style="background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsh-tide-glass-border);border-radius:12px;padding:12px;width:268px;box-sizing:border-box;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
       <strong style="font-size:13px;color:var(--dsw-alias-label-primary);font-weight:600;">工作区</strong>
       <span style="color:var(--dsw-alias-label-caption);font-size:12px;">⌕</span>
     </div>
-    <div style="display:flex;gap:16px;border-bottom:1px solid var(--dsh-simplify-glass-border);padding-bottom:6px;font-size:12px;margin-bottom:9px;">
-      <span style="font-weight:600;color:var(--dsh-simplify-accent-text);border-bottom:2px solid var(--dsh-simplify-accent-text);padding-bottom:6px;margin-bottom:-7px;">未归档</span>
+    <div style="display:flex;gap:16px;border-bottom:1px solid var(--dsh-tide-glass-border);padding-bottom:6px;font-size:12px;margin-bottom:9px;">
+      <span style="font-weight:600;color:var(--dsh-tide-accent-text);border-bottom:2px solid var(--dsh-tide-accent-text);padding-bottom:6px;margin-bottom:-7px;">未归档</span>
       <span style="color:var(--dsw-alias-label-tertiary);">已归档</span>
     </div>
-    <input placeholder="筛选工作区或会话..." style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 9px;font-size:11.5px;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsh-simplify-glass-border);border-radius:6px;background:var(--dsh-simplify-glass-fill-soft);" />
+    <input placeholder="筛选工作区或会话..." style="width:100%;box-sizing:border-box;margin-bottom:6px;padding:6px 9px;font-size:11.5px;color:var(--dsw-alias-label-secondary);border:1px solid var(--dsh-tide-glass-border);border-radius:6px;background:var(--dsh-tide-glass-fill-soft);" />
     <div class="workspace-list-container" style="display:flex;flex-direction:column;">
       ${[
         ['default', 3],
-        ['dsh-simplify-theme', 5],
+        ['dsh-tide-theme', 5],
         ['web-dashboard', 2],
         ['api-service', 1],
         ['design-system', 4],
@@ -85,7 +85,7 @@ const browser = await chromium.launch({
  * 按宿主方式注入 Simplify Theme：
  * 1. 动态 import 真实 SIMPLIFY_TOKENS（源自 src/client/tokens.ts 单一数据源，去手写）。
  * 2. 依据入参 mode ('dark' | 'light') 选取对应 token，不走错误的 process.env.LIGHT 分支。
- * 3. 给 body 挂载 data-dsh-simplify-theme gate，并按 mode 开闭 data-ds-dark-theme。
+ * 3. 给 body 挂载 data-dsh-tide-theme gate，并按 mode 开闭 data-ds-dark-theme。
  */
 async function theme(page, mode = 'dark', themeOn = true) {
   await page.evaluate(async ({ shellCss, mode, themeOn }) => {
@@ -107,12 +107,12 @@ async function theme(page, mode = 'dark', themeOn = true) {
       .join('\n')
 
     const style = document.createElement('style')
-    style.setAttribute('data-dsh-simplify-tokens', '')
+    style.setAttribute('data-dsh-tide-tokens', '')
     style.textContent = `body, :root { ${tokenRules} }\n${shellCss}`
     document.head.append(style)
 
-    if (themeOn) document.body.setAttribute('data-dsh-simplify-theme', '')
-    else document.body.removeAttribute('data-dsh-simplify-theme')
+    if (themeOn) document.body.setAttribute('data-dsh-tide-theme', '')
+    else document.body.removeAttribute('data-dsh-tide-theme')
     if (mode === 'dark') {
       document.body.setAttribute('data-ds-dark-theme', '')
     } else {
@@ -170,14 +170,14 @@ async function captureOne(mode, themeOn) {
     style.textContent = UI_CSS
     document.head.append(style)
 
-    localStorage.setItem('dsh-simplify-theme.pinned-workspaces',
-      JSON.stringify(['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service']))
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces',
+      JSON.stringify(['default', 'dsh-tide-theme', 'web-dashboard', 'api-service']))
 
     const mount = document.getElementById('mount')
     mount.style.padding = '28px'
     mount.innerHTML = markup
 
-    const workspaces = ['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
+    const workspaces = ['default', 'dsh-tide-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
       .map((workspaceId) => ({ workspaceId, sessionIds: [] }))
 
     mountSidebarGroups({
@@ -189,7 +189,7 @@ async function captureOne(mode, themeOn) {
     })
   }, { markup: SIDEBAR_MARKUP })
   await theme(sidebarPage, mode, themeOn)
-  await sidebarPage.waitForSelector('[data-dsh-simplify-section="pinned"]')
+  await sidebarPage.waitForSelector('[data-dsh-tide-section="pinned"]')
   // 侧栏并非主题材质门控对象（其配色来自 token 层），故只在主题开启态出图，避免产出无意义的重图。
   if (themeOn) {
     await sidebarPage.locator('[data-slot="sidebar.workspaces"]').screenshot({ path: file('current-sidebar') })
@@ -213,7 +213,7 @@ async function captureOne(mode, themeOn) {
     mount.innerHTML = `
       <div data-composer-seat style="width:100%;display:flex;justify-content:center;">
         <div data-composer-dock style="display:flex;justify-content:center;align-items:center;">
-          <div data-dsh-simplify-dock style="display:flex;align-items:center;justify-content:center;">
+          <div data-dsh-tide-dock style="display:flex;align-items:center;justify-content:center;">
             <div id="stats-mount"></div>
           </div>
         </div>
@@ -230,14 +230,14 @@ async function captureOne(mode, themeOn) {
       .render(React.createElement(Stats, { useProjection: (k) => projections[k] }))
   })
   await theme(dockPage, mode, themeOn)
-  await dockPage.waitForSelector('[data-dsh-simplify-dock-center]')
-  await dockPage.locator('.dsh-simplify-dock-stats-trigger').click()
-  await dockPage.waitForSelector('[data-dsh-simplify-stats-popover]')
+  await dockPage.waitForSelector('[data-dsh-tide-dock-center]')
+  await dockPage.locator('.dsh-tide-dock-stats-trigger').click()
+  await dockPage.waitForSelector('[data-dsh-tide-stats-popover]')
 
   // 确保 portal 挂载到 body 上的弹窗与 dock 栏整体截取不出视口
   const dockClip = await computeSafeClip(dockPage, [
-    dockPage.locator('[data-dsh-simplify-stats-popover]'),
-    dockPage.locator('[data-dsh-simplify-dock-center]')
+    dockPage.locator('[data-dsh-tide-stats-popover]'),
+    dockPage.locator('[data-dsh-tide-dock-center]')
   ], 28)
 
   await dockPage.screenshot({
@@ -343,7 +343,7 @@ async function captureOne(mode, themeOn) {
 
       const mount = document.getElementById('mount')
       mount.style.cssText = 'padding:40px;display:flex;flex-direction:column;gap:16px;align-items:flex-start;'
-      mount.innerHTML = '<div data-composer-seat style="width:100%"><div data-composer-card style="border-radius:18px;padding:16px;border:1px solid var(--dsw-alias-border-l2)"><div data-dsh-simplify-dock style="display:flex;align-items:center"><div id="ctl"></div></div></div></div>'
+      mount.innerHTML = '<div data-composer-seat style="width:100%"><div data-composer-card style="border-radius:18px;padding:16px;border:1px solid var(--dsw-alias-border-l2)"><div data-dsh-tide-dock style="display:flex;align-items:center"><div id="ctl"></div></div></div></div>'
       const Control = createModelControl({
         sessionId: 'demo-session',
         directories: { directoryFor: () => directory },
@@ -352,15 +352,15 @@ async function captureOne(mode, themeOn) {
       ReactDOM.createRoot(document.getElementById('ctl')).render(React.createElement(Control, {}))
     })
     await theme(controlPage, mode, themeOn)
-    await controlPage.waitForSelector('[data-dsh-simplify-pill]')
+    await controlPage.waitForSelector('[data-dsh-tide-pill]')
 
     // 模型选择面板
-    await controlPage.locator('[data-dsh-simplify-pill]').first().click()
+    await controlPage.locator('[data-dsh-tide-pill]').first().click()
     await controlPage.waitForTimeout(320)
     // 弹层是 portal 到 body 的，clip 必须同时覆盖触发器与弹层，否则会被裁掉
     const modelClip = await controlPage.evaluate(() => {
-      const trigger = document.querySelector('[data-dsh-simplify-pill]')
-      const popup = document.querySelector('[data-dsh-simplify-popup]')
+      const trigger = document.querySelector('[data-dsh-tide-pill]')
+      const popup = document.querySelector('[data-dsh-tide-popup]')
       const a = trigger.getBoundingClientRect()
       const b = popup.getBoundingClientRect()
       const pad = 20
@@ -394,7 +394,7 @@ async function captureOne(mode, themeOn) {
     ReactDOM.createRoot(mount).render(React.createElement(Settings, {}))
   })
   await theme(settingsPage, mode, themeOn)
-  await settingsPage.waitForSelector('[data-dsh-simplify-settings]')
+  await settingsPage.waitForSelector('[data-dsh-tide-settings]')
   if (themeOn) {
     await settingsPage.locator('#mount').screenshot({ path: file('current-settings') })
     console.log(`✓ ${file('current-settings')}`)
@@ -421,7 +421,7 @@ async function captureOne(mode, themeOn) {
       .b-brand h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.02em; color: var(--dsw-alias-label-primary); }
       .b-brand p { margin: 3px 0 0; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
       .b-tags { display: flex; gap: 8px; }
-      .b-tag { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--dsh-simplify-glass-border); background: var(--dsh-simplify-glass-fill-soft); color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+      .b-tag { padding: 5px 11px; border-radius: 999px; border: 1px solid var(--dsh-tide-glass-border); background: var(--dsh-tide-glass-fill-soft); color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
       .b-stage {
         display: grid;
         grid-template-columns: 244px 1fr 1fr 330px;
@@ -432,8 +432,8 @@ async function captureOne(mode, themeOn) {
       }
       .b-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
       .b-label { display: flex; align-items: center; gap: 7px; color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
-      .b-label::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: var(--dsh-simplify-accent-text); box-shadow: 0 0 7px var(--dsh-simplify-accent-glow); }
-      .b-card { border: 1px solid var(--dsh-simplify-glass-border); border-radius: 14px; background: var(--dsh-simplify-glass-fill); backdrop-filter: blur(14px); overflow: hidden; box-sizing: border-box; }
+      .b-label::before { content: ''; width: 5px; height: 5px; border-radius: 999px; background: var(--dsh-tide-accent-text); box-shadow: 0 0 7px var(--dsh-tide-accent-glow); }
+      .b-card { border: 1px solid var(--dsh-tide-glass-border); border-radius: 14px; background: var(--dsh-tide-glass-fill); backdrop-filter: blur(14px); overflow: hidden; box-sizing: border-box; }
       .b-scroll { overflow: hidden; }
     `
     document.head.append(style)
@@ -482,9 +482,9 @@ async function captureOne(mode, themeOn) {
       </div>`
 
     // 侧栏
-    localStorage.setItem('dsh-simplify-theme.pinned-workspaces',
-      JSON.stringify(['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service']))
-    const workspaces = ['default', 'dsh-simplify-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces',
+      JSON.stringify(['default', 'dsh-tide-theme', 'web-dashboard', 'api-service']))
+    const workspaces = ['default', 'dsh-tide-theme', 'web-dashboard', 'api-service', 'design-system', 'docs-site']
       .map((workspaceId) => ({ workspaceId, sessionIds: [] }))
     mountSidebarGroups({
       locale,
@@ -535,7 +535,7 @@ async function captureOne(mode, themeOn) {
     document.getElementById('b-dock').innerHTML = `
       <div data-composer-seat>
         <div data-composer-dock style="display:flex;justify-content:center;">
-          <div data-dsh-simplify-dock style="display:flex;width:100%;align-items:center;justify-content:center;">
+          <div data-dsh-tide-dock style="display:flex;width:100%;align-items:center;justify-content:center;">
             <div id="b-stats"></div>
           </div>
         </div>
@@ -552,7 +552,7 @@ async function captureOne(mode, themeOn) {
   await bannerPage.locator('.subagent-topology-summary').click()
   await bannerPage.waitForSelector('.subagent-topology-detail')
   // 直接截取默认平铺 HUD，不打开 popover 弹窗，不手工 DOM remove
-  await bannerPage.waitForSelector('#b-stats [data-dsh-simplify-dock-center]')
+  await bannerPage.waitForSelector('#b-stats [data-dsh-tide-dock-center]')
   await bannerPage.waitForTimeout(400)
   if (themeOn) {
     await bannerPage.screenshot({ path: file('banner') })

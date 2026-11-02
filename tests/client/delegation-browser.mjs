@@ -167,7 +167,7 @@ test('移除委派源后清理对应摘要及隐藏标记', async t => {
   await page.locator('[data-chat-node-key="one"]').evaluate(el => el.remove())
   await page.locator('[data-chat-node-key="two"]').evaluate(el => el.remove())
   await waitCount(page, hosts, 0)
-  assert.equal(await page.locator('[data-dsh-simplify-delegation-source]').count(), 0)
+  assert.equal(await page.locator('[data-dsh-tide-delegation-source]').count(), 0)
 })
 
 test('切换会话并替换聊天内容，不残留旧摘要与展开状态', async t => {
@@ -194,7 +194,7 @@ test('子代理全部认领后，多余的工具行保留原生展示', async t 
     document.querySelector('#step').insertAdjacentHTML('beforeend', `<div data-chat-turn="turn-1" data-chat-node-key="new"><div data-tool="subagent">${C}</div></div><div data-chat-turn="turn-1" data-chat-node-key="extra"><div data-tool="subagent">extra without session</div></div>`)
     window.fixture.listener()
   }, { C })
-  await page.waitForFunction(() => document.querySelector('[data-chat-node-key="extra"] [data-tool]') && !document.querySelector('[data-chat-node-key="extra"] [data-tool]')?.hasAttribute('data-dsh-simplify-delegation-source'))
+  await page.waitForFunction(() => document.querySelector('[data-chat-node-key="extra"] [data-tool]') && !document.querySelector('[data-chat-node-key="extra"] [data-tool]')?.hasAttribute('data-dsh-tide-delegation-source'))
   await page.locator(summary).click()
   assert.deepEqual(await page.locator('.subagent-topology-node-title').allTextContents(), ['Alpha', 'Beta', 'Gamma'])
 })
@@ -402,10 +402,10 @@ test('第一轮对话完成后，动态开启第二轮对话派发子代理，�
 test('卸载后删除摘要并恢复原工具行', async t => {
   const page = await setup(t, { batches: false })
   await waitCount(page, hosts, 1)
-  assert.equal(await page.locator('[data-dsh-simplify-delegation-source]').count(), 2)
+  assert.equal(await page.locator('[data-dsh-tide-delegation-source]').count(), 2)
   await page.evaluate(() => window.fixture.handle.dispose())
   assert.equal(await page.locator(hosts).count(), 0)
-  assert.equal(await page.locator('[data-dsh-simplify-delegation-source]').count(), 0)
+  assert.equal(await page.locator('[data-dsh-tide-delegation-source]').count(), 0)
   assert.equal(await page.locator('[data-tool="subagent"]').isVisible(), true)
 })
 

@@ -57,7 +57,7 @@ export function createModelSeat(props: DockHostProps) {
   return function ModelSeat() {
     const [config] = useSimplifyConfig(props.shared.hooks)
     if (!config.modelControl) return null
-    return h('div', { 'data-dsh-simplify-seat': 'model' }, h(model as never, {}))
+    return h('div', { 'data-dsh-tide-seat': 'model' }, h(model as never, {}))
   }
 }
 
@@ -75,7 +75,7 @@ export function createPermissionSeat(props: DockHostProps) {
     const [config] = useSimplifyConfig(props.shared.hooks)
     const projection = useProj('permissions') as { currentValue: string } | undefined
     if (!config.permissionControl) return null
-    return h('div', { 'data-dsh-simplify-seat': 'permission' },
+    return h('div', { 'data-dsh-tide-seat': 'permission' },
       h(permission as never, { permissionValue: projection?.currentValue }))
   }
 }

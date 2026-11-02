@@ -70,7 +70,7 @@ export function mountSidebarTabs(options: SidebarTabsOptions): Mount | null {
   const header = sidebarHeader(anchor)
   if (header === null) return null
   const container = makeEl('div')
-  container.dataset.dshSimplifyTabsHost = ''
+  container.dataset.dshTideTabsHost = ''
   header.insertAdjacentElement('afterend', container)
 
   const { createElement, createRoot } = React
@@ -101,7 +101,7 @@ export function mountSidebarTabs(options: SidebarTabsOptions): Mount | null {
         'button',
         {
           type: 'button',
-          'data-dsh-simplify-tab': '',
+          'data-dsh-tide-tab': '',
           'data-active': state.active === filter ? 'true' : 'false',
           onClick: () => pick(filter)
         },
@@ -110,7 +110,7 @@ export function mountSidebarTabs(options: SidebarTabsOptions): Mount | null {
 
     return (createElement as (type: string, props: Record<string, unknown>, ...children: unknown[]) => unknown)(
       'div',
-      { 'data-dsh-simplify-tabs': '', role: 'tablist' },
+      { 'data-dsh-tide-tabs': '', role: 'tablist' },
       tab('default', labels.sessions),
       tab('only', labels.archived)
     )

@@ -48,7 +48,7 @@ export const DEFAULT_SIMPLIFY_CONFIG: Readonly<SimplifyConfig> = Object.freeze({
 })
 
 export const CONFIG_STORAGE_KEY = 'dsh.simplify-theme.config'
-export const CONFIG_CHANGE_EVENT = 'dsh-simplify-theme:config-change'
+export const CONFIG_CHANGE_EVENT = 'dsh-tide-theme:config-change'
 
 function parseLimit(val: unknown, fallback: number): number {
   if (typeof val === 'number' && Number.isFinite(val) && val >= 0) {
@@ -91,7 +91,7 @@ export function saveSimplifyConfig(patch: Partial<SimplifyConfig>): SimplifyConf
     try {
       localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(next))
     } catch (e) {
-      console.warn('[dsh-simplify-theme] 无法保存配置到 localStorage:', e)
+      console.warn('[dsh-tide-theme] 无法保存配置到 localStorage:', e)
     }
   }
   if (typeof window !== 'undefined') {

@@ -57,7 +57,7 @@ export function createDockStats(shared: DockShared) {
                                  seat?.parentElement ??
                                  seat ??
                                  document
-        const badges = sessionContainer.querySelectorAll<HTMLElement>('[data-dsh-simplify-duration]')
+        const badges = sessionContainer.querySelectorAll<HTMLElement>('[data-dsh-tide-duration]')
         const text = badges[badges.length - 1]?.textContent?.trim() || null
         setLatestDuration(text)
       }
@@ -153,13 +153,13 @@ export function createDockStats(shared: DockShared) {
       iconNode: unknown,
       value: unknown,
       extra: Record<string, string | undefined> = {}
-    ) => h('span', { key, className: `dsh-simplify-stat-item ${className}`, title, ...extra },
-      h('span', { className: 'dsh-simplify-stat-label' },
-        h('span', { className: 'dsh-simplify-hud-icon', 'aria-hidden': 'true' }, iconNode),
-        h('span', { className: 'dsh-simplify-stat-label-text' }, title)
+    ) => h('span', { key, className: `dsh-tide-stat-item ${className}`, title, ...extra },
+      h('span', { className: 'dsh-tide-stat-label' },
+        h('span', { className: 'dsh-tide-hud-icon', 'aria-hidden': 'true' }, iconNode),
+        h('span', { className: 'dsh-tide-stat-label-text' }, title)
       ),
-      h('span', { className: 'dsh-simplify-stat-item-main' },
-        h('span', { className: 'dsh-simplify-hud-val' }, value)
+      h('span', { className: 'dsh-tide-stat-item-main' },
+        h('span', { className: 'dsh-tide-hud-val' }, value)
       )
     )
 
@@ -172,7 +172,7 @@ export function createDockStats(shared: DockShared) {
         viewBox: '0 0 14 14',
         width: '13',
         height: '13',
-        className: `dsh-simplify-meter-ring is-${bucket}`,
+        className: `dsh-tide-meter-ring is-${bucket}`,
         'aria-hidden': 'true'
       },
         h('circle', {
@@ -207,8 +207,8 @@ export function createDockStats(shared: DockShared) {
       h('path', { d: 'M8 4.8V8l2.2 1.6' }))
 
     // 主读数与单位分层，保留原有文字顺序及数据口径。
-    const number = (value: string | number) => h('strong', { key: 'number', className: 'dsh-simplify-hud-number' }, String(value))
-    const unit = (value: string) => h('span', { key: value, className: 'dsh-simplify-hud-unit' }, value)
+    const number = (value: string | number) => h('strong', { key: 'number', className: 'dsh-tide-hud-number' }, String(value))
+    const unit = (value: string) => h('span', { key: value, className: 'dsh-tide-hud-unit' }, value)
 
     // 1. 会话规模
     if (model.activity) {
@@ -227,11 +227,11 @@ export function createDockStats(shared: DockShared) {
         [
           number(formatCompactTokens(model.context.usedTokens)),
           unit(` / ${formatCompactTokens(model.context.contextWindow)} `),
-          h('span', { key: 'percent', className: 'dsh-simplify-hud-percent', 'data-bucket': bucket }, `(${model.context.usedPercent}%)`)
+          h('span', { key: 'percent', className: 'dsh-tide-hud-percent', 'data-bucket': bucket }, `(${model.context.usedPercent}%)`)
         ],
         {
-          'data-dsh-simplify-pct': config.contextColorAlert ? model.context.bucket : undefined,
-          'data-dsh-simplify-pct-kind': 'context'
+          'data-dsh-tide-pct': config.contextColorAlert ? model.context.bucket : undefined,
+          'data-dsh-tide-pct-kind': 'context'
         }
       ))
     }
@@ -249,8 +249,8 @@ export function createDockStats(shared: DockShared) {
         'cache', 'is-cache', '缓存命中', createCircleMeter(model.cache.percent, model.cache.bucket),
         [number(`${model.cache.percent}%`)],
         {
-          'data-dsh-simplify-pct': model.cache.bucket,
-          'data-dsh-simplify-pct-kind': 'cache'
+          'data-dsh-tide-pct': model.cache.bucket,
+          'data-dsh-tide-pct-kind': 'cache'
         }
       ))
     }
@@ -277,130 +277,130 @@ export function createDockStats(shared: DockShared) {
       role: 'dialog',
       'aria-modal': 'false',
       'aria-label': '会话用量与性能看板',
-      className: 'dsh-simplify-stats-popover',
-      'data-dsh-simplify-stats-popover': '',
-      'data-dsh-simplify-portal-root': '',
+      className: 'dsh-tide-stats-popover',
+      'data-dsh-tide-stats-popover': '',
+      'data-dsh-tide-portal-root': '',
       style: pos ? { position: 'fixed', left: `${pos.left}px`, top: `${pos.top}px` } : { visibility: 'hidden' }
     },
       // 头部
-      h('div', { className: 'dsh-simplify-stats-popover-head' },
-        h('span', { className: 'dsh-simplify-stats-popover-title' }, '会话用量与性能看板'),
+      h('div', { className: 'dsh-tide-stats-popover-head' },
+        h('span', { className: 'dsh-tide-stats-popover-title' }, '会话用量与性能看板'),
         model.context ? h('span', {
-          className: 'dsh-simplify-stats-popover-badge',
+          className: 'dsh-tide-stats-popover-badge',
           'data-bucket': model.context.bucket
         }, `${model.context.usedPercent}% 已用`) : null
       ),
 
       // 1. 上下文容量进度条
-      model.context ? h('div', { className: 'dsh-simplify-stats-section' },
-        h('div', { className: 'dsh-simplify-stats-progress-header' },
+      model.context ? h('div', { className: 'dsh-tide-stats-section' },
+        h('div', { className: 'dsh-tide-stats-progress-header' },
           h('span', {}, '上下文容量占用'),
           h('strong', {}, `${formatCompactTokens(model.context.usedTokens)} / ${formatCompactTokens(model.context.contextWindow)}`)
         ),
-        h('div', { className: 'dsh-simplify-stats-progress-track' },
+        h('div', { className: 'dsh-tide-stats-progress-track' },
           model.context.breakdown && model.context.breakdown.totalTokens > 0 ? [
             h('div', {
               key: 'seg-sys',
-              className: 'dsh-simplify-stats-progress-fill is-segment is-system',
+              className: 'dsh-tide-stats-progress-fill is-segment is-system',
               title: `系统提示词: ${model.context.breakdown.systemTokens.toLocaleString()} tokens`,
               style: { width: `${Math.min(100, (model.context.breakdown.systemTokens / model.context.contextWindow) * 100)}%` }
             }),
             h('div', {
               key: 'seg-tools',
-              className: 'dsh-simplify-stats-progress-fill is-segment is-tools',
+              className: 'dsh-tide-stats-progress-fill is-segment is-tools',
               title: `工具定义: ${model.context.breakdown.toolsTokens.toLocaleString()} tokens`,
               style: { width: `${Math.min(100, (model.context.breakdown.toolsTokens / model.context.contextWindow) * 100)}%` }
             }),
             h('div', {
               key: 'seg-messages',
-              className: 'dsh-simplify-stats-progress-fill is-segment is-messages',
+              className: 'dsh-tide-stats-progress-fill is-segment is-messages',
               title: `对话与压缩历史: ${model.context.breakdown.messageTokens.toLocaleString()} tokens`,
               style: { width: `${Math.min(100, (model.context.breakdown.messageTokens / model.context.contextWindow) * 100)}%` }
             })
           ] : h('div', {
-            className: 'dsh-simplify-stats-progress-fill',
+            className: 'dsh-tide-stats-progress-fill',
             'data-bucket': model.context.bucket,
             style: { width: `${Math.min(100, Math.max(0, model.context.usedPercent))}%` }
           })
         ),
-        model.context.breakdown && model.context.breakdown.totalTokens > 0 ? h('div', { className: 'dsh-simplify-stats-breakdown-legend' },
-          h('span', { className: 'dsh-simplify-legend-chip is-system' }, `系统 ${formatCompactTokens(model.context.breakdown.systemTokens)}`),
-          h('span', { className: 'dsh-simplify-legend-chip is-tools' }, `工具 ${formatCompactTokens(model.context.breakdown.toolsTokens)}`),
-          h('span', { className: 'dsh-simplify-legend-chip is-messages' }, `消息 ${formatCompactTokens(model.context.breakdown.messageTokens)}`)
+        model.context.breakdown && model.context.breakdown.totalTokens > 0 ? h('div', { className: 'dsh-tide-stats-breakdown-legend' },
+          h('span', { className: 'dsh-tide-legend-chip is-system' }, `系统 ${formatCompactTokens(model.context.breakdown.systemTokens)}`),
+          h('span', { className: 'dsh-tide-legend-chip is-tools' }, `工具 ${formatCompactTokens(model.context.breakdown.toolsTokens)}`),
+          h('span', { className: 'dsh-tide-legend-chip is-messages' }, `消息 ${formatCompactTokens(model.context.breakdown.messageTokens)}`)
         ) : null,
-        h('div', { className: 'dsh-simplify-stats-progress-footer' },
+        h('div', { className: 'dsh-tide-stats-progress-footer' },
           h('span', {}, `剩余空间: ${model.context.remainingTokens.toLocaleString()} tokens`),
           h('span', {}, `上限: ${model.context.contextWindow.toLocaleString()}`)
         )
       ) : null,
 
       // 2. 核心性能指标卡片 (2x2)
-      h('div', { className: 'dsh-simplify-stats-grid' },
-        h('div', { className: 'dsh-simplify-stats-card' },
-          h('div', { className: 'dsh-simplify-stats-card-head' },
-            h('span', { className: 'dsh-simplify-stats-card-k' }, '平均 TPS'),
-            h('span', { className: 'dsh-simplify-eq', 'aria-hidden': 'true' },
-              h('span', { className: 'dsh-simplify-eq-bar' }),
-              h('span', { className: 'dsh-simplify-eq-bar' }),
-              h('span', { className: 'dsh-simplify-eq-bar' }),
-              h('span', { className: 'dsh-simplify-eq-bar' })
+      h('div', { className: 'dsh-tide-stats-grid' },
+        h('div', { className: 'dsh-tide-stats-card' },
+          h('div', { className: 'dsh-tide-stats-card-head' },
+            h('span', { className: 'dsh-tide-stats-card-k' }, '平均 TPS'),
+            h('span', { className: 'dsh-tide-eq', 'aria-hidden': 'true' },
+              h('span', { className: 'dsh-tide-eq-bar' }),
+              h('span', { className: 'dsh-tide-eq-bar' }),
+              h('span', { className: 'dsh-tide-eq-bar' }),
+              h('span', { className: 'dsh-tide-eq-bar' })
             )
           ),
-          h('strong', { className: 'dsh-simplify-stats-card-v is-highlight' }, model.tps ? model.tps.label : '暂无数据'),
-          h('span', { className: 'dsh-simplify-stats-card-hint' }, model.tps?.rawDecodeTps ? `端到端平均，非实时瞬时（流式解码: ${model.tps.rawDecodeTps}）` : '端到端平均速率，非实时瞬时')
+          h('strong', { className: 'dsh-tide-stats-card-v is-highlight' }, model.tps ? model.tps.label : '暂无数据'),
+          h('span', { className: 'dsh-tide-stats-card-hint' }, model.tps?.rawDecodeTps ? `端到端平均，非实时瞬时（流式解码: ${model.tps.rawDecodeTps}）` : '端到端平均速率，非实时瞬时')
         ),
-        h('div', { className: 'dsh-simplify-stats-card' },
-          h('span', { className: 'dsh-simplify-stats-card-k' }, 'Prompt 缓存命中率'),
+        h('div', { className: 'dsh-tide-stats-card' },
+          h('span', { className: 'dsh-tide-stats-card-k' }, 'Prompt 缓存命中率'),
           h('strong', {
-            className: 'dsh-simplify-stats-card-v',
-            'data-dsh-simplify-pct': model.cache?.bucket ?? 'bad'
+            className: 'dsh-tide-stats-card-v',
+            'data-dsh-tide-pct': model.cache?.bucket ?? 'bad'
           }, model.cache ? `${model.cache.percent}%` : '暂无数据'),
-          h('div', { className: 'dsh-simplify-hud-mini-track' },
+          h('div', { className: 'dsh-tide-hud-mini-track' },
             h('div', {
-              className: 'dsh-simplify-hud-mini-fill is-cache',
+              className: 'dsh-tide-hud-mini-fill is-cache',
               style: { width: `${model.cache?.percent ?? 0}%` }
             })
           ),
-          h('span', { className: 'dsh-simplify-stats-card-hint' }, `读取: ${model.tokensDetail ? formatCompactTokens(model.tokensDetail.cacheReadTokens) : '暂无数据'}`)
+          h('span', { className: 'dsh-tide-stats-card-hint' }, `读取: ${model.tokensDetail ? formatCompactTokens(model.tokensDetail.cacheReadTokens) : '暂无数据'}`)
         ),
-        h('div', { className: 'dsh-simplify-stats-card' },
-          h('span', { className: 'dsh-simplify-stats-card-k' }, '平均首字延迟 (TTFT)'),
-          h('strong', { className: 'dsh-simplify-stats-card-v' }, model.tps?.avgTtft ?? '暂无数据'),
-          h('span', { className: 'dsh-simplify-stats-card-hint' }, '含网络/推理思考耗时')
+        h('div', { className: 'dsh-tide-stats-card' },
+          h('span', { className: 'dsh-tide-stats-card-k' }, '平均首字延迟 (TTFT)'),
+          h('strong', { className: 'dsh-tide-stats-card-v' }, model.tps?.avgTtft ?? '暂无数据'),
+          h('span', { className: 'dsh-tide-stats-card-hint' }, '含网络/推理思考耗时')
         ),
-        h('div', { className: 'dsh-simplify-stats-card' },
-          h('span', { className: 'dsh-simplify-stats-card-k' }, latestDuration ? '单轮最新总耗时' : '模型累计总耗时'),
-          h('strong', { className: 'dsh-simplify-stats-card-v' }, latestDuration ?? (model.duration ? model.duration.label : '暂无数据')),
-          h('span', { className: 'dsh-simplify-stats-card-hint' }, latestDuration ? '包含排队与流式等待' : (stats?.turns ? `平均每轮 ${formatSimpleDuration((model.timingDetail?.llmMs ?? 0) / Math.max(1, stats.turns))}` : '模型总耗时'))
+        h('div', { className: 'dsh-tide-stats-card' },
+          h('span', { className: 'dsh-tide-stats-card-k' }, latestDuration ? '单轮最新总耗时' : '模型累计总耗时'),
+          h('strong', { className: 'dsh-tide-stats-card-v' }, latestDuration ?? (model.duration ? model.duration.label : '暂无数据')),
+          h('span', { className: 'dsh-tide-stats-card-hint' }, latestDuration ? '包含排队与流式等待' : (stats?.turns ? `平均每轮 ${formatSimpleDuration((model.timingDetail?.llmMs ?? 0) / Math.max(1, stats.turns))}` : '模型总耗时'))
         )
       ),
 
       // 3. Token 明细列表
-      model.tokensDetail ? h('div', { className: 'dsh-simplify-stats-detail-list' },
-        h('div', { className: 'dsh-simplify-stats-detail-row' },
+      model.tokensDetail ? h('div', { className: 'dsh-tide-stats-detail-list' },
+        h('div', { className: 'dsh-tide-stats-detail-row' },
           h('span', {}, '未缓存输入 Tokens'),
           h('strong', {}, model.tokensDetail.uncachedInputTokens.toLocaleString())
         ),
-        h('div', { className: 'dsh-simplify-stats-detail-row' },
+        h('div', { className: 'dsh-tide-stats-detail-row' },
           h('span', {}, '缓存读取 Tokens (Cache Read)'),
           h('strong', {}, model.tokensDetail.cacheReadTokens.toLocaleString())
         ),
-        model.tokensDetail.cacheWriteTokens > 0 ? h('div', { className: 'dsh-simplify-stats-detail-row' },
+        model.tokensDetail.cacheWriteTokens > 0 ? h('div', { className: 'dsh-tide-stats-detail-row' },
           h('span', {}, '缓存写入 Tokens (Cache Write)'),
           h('strong', {}, model.tokensDetail.cacheWriteTokens.toLocaleString())
         ) : null,
-        h('div', { className: 'dsh-simplify-stats-detail-row' },
+        h('div', { className: 'dsh-tide-stats-detail-row' },
           h('span', {}, '模型输出 Tokens (含思考内容)'),
           h('strong', {}, model.tokensDetail.outputTokens.toLocaleString())
         ),
-        h('div', { className: 'dsh-simplify-stats-detail-row is-total' },
+        h('div', { className: 'dsh-tide-stats-detail-row is-total' },
           h('span', {}, '累计消耗总 Tokens'),
           h('strong', {}, model.tokensDetail.totalTokens.toLocaleString())
         )
       ) : null,
 
       // 4. 会话活动与耗时拆解
-      h('div', { className: 'dsh-simplify-stats-footer' },
+      h('div', { className: 'dsh-tide-stats-footer' },
         model.activity ? h('div', {}, `会话累计活动: ${model.activity.turns} 轮 · ${model.activity.steps} 步`) : null,
         model.timingDetail ? h('div', {}, `模型总耗时 ${formatSimpleDuration(model.timingDetail.llmMs)}${model.timingDetail.toolMs > 0 ? ` · 工具耗时 ${formatSimpleDuration(model.timingDetail.toolMs)}` : ''}`) : null
       )
@@ -411,14 +411,14 @@ export function createDockStats(shared: DockShared) {
       : popoverNode
 
     return h('div', {
-      className: 'dsh-simplify-dock-center-container',
-      'data-dsh-simplify-dock-center': '',
-      'data-dsh-simplify-dock-root': ''
+      className: 'dsh-tide-dock-center-container',
+      'data-dsh-tide-dock-center': '',
+      'data-dsh-tide-dock-root': ''
     },
       h('button', {
         ref: triggerRef,
         type: 'button',
-        className: 'dsh-simplify-dock-stats-trigger',
+        className: 'dsh-tide-dock-stats-trigger',
         'aria-haspopup': 'dialog',
         'aria-expanded': open,
         title: '点击展开会话用量与性能看板',

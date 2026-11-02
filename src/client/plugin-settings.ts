@@ -158,30 +158,30 @@ export function createPluginSettings(shared: DockShared) {
     }
 
     return h('div', {
-      className: 'dsh-simplify-settings-root',
-      'data-dsh-simplify-settings': ''
+      className: 'dsh-tide-settings-root',
+      'data-dsh-tide-settings': ''
     },
       // 头部说明
-      h('div', { className: 'dsh-simplify-settings-head' },
-        h('div', { className: 'dsh-simplify-settings-title-wrap' },
-          h('h4', { className: 'dsh-simplify-settings-title' }, '潮汐玻璃 · 主题与增强功能配置'),
-          h('span', { className: 'dsh-simplify-settings-badge' }, '即时生效')
+      h('div', { className: 'dsh-tide-settings-head' },
+        h('div', { className: 'dsh-tide-settings-title-wrap' },
+          h('h4', { className: 'dsh-tide-settings-title' }, '潮汐玻璃 · 主题与增强功能配置'),
+          h('span', { className: 'dsh-tide-settings-badge' }, '即时生效')
         ),
-        h('p', { className: 'dsh-simplify-settings-desc' },
+        h('p', { className: 'dsh-tide-settings-desc' },
           '可视化切换各项界面增强与显示模块。主题材质开启时套用冰蓝玻璃皮肤，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
         )
       ),
 
       // 各功能分组卡片
-      h('div', { className: 'dsh-simplify-settings-groups' },
+      h('div', { className: 'dsh-tide-settings-groups' },
         SETTING_GROUPS.map((group) =>
           h('div', {
             key: group.id,
-            className: 'dsh-simplify-settings-card',
+            className: 'dsh-tide-settings-card',
             'data-group': group.id
           },
-            h('div', { className: 'dsh-simplify-settings-group-title' }, group.title),
-            h('div', { className: 'dsh-simplify-settings-list' },
+            h('div', { className: 'dsh-tide-settings-group-title' }, group.title),
+            h('div', { className: 'dsh-tide-settings-list' },
               group.items.map((item) => {
                 if (item.type === 'number') {
                   const num = typeof config[item.key] === 'number' ? (config[item.key] as number) : 5
@@ -191,24 +191,24 @@ export function createPluginSettings(shared: DockShared) {
 
                   return h('div', {
                     key: item.key,
-                    className: 'dsh-simplify-settings-row'
+                    className: 'dsh-tide-settings-row'
                   },
-                    h('div', { className: 'dsh-simplify-settings-row-text' },
-                      h('div', { className: 'dsh-simplify-settings-item-title' }, item.title),
-                      h('div', { className: 'dsh-simplify-settings-item-desc' }, item.description)
+                    h('div', { className: 'dsh-tide-settings-row-text' },
+                      h('div', { className: 'dsh-tide-settings-item-title' }, item.title),
+                      h('div', { className: 'dsh-tide-settings-item-desc' }, item.description)
                     ),
-                    h('div', { className: 'dsh-simplify-stepper', 'data-dsh-simplify-stepper': item.key },
+                    h('div', { className: 'dsh-tide-stepper', 'data-dsh-tide-stepper': item.key },
                       h('button', {
                         type: 'button',
-                        className: 'dsh-simplify-stepper-btn is-dec',
+                        className: 'dsh-tide-stepper-btn is-dec',
                         disabled: num <= min,
                         'aria-label': `${item.title} 减小`,
                         onClick: () => handleNumberChange(item.key, Math.max(min, num - 1))
                       }, '−'),
-                      h('span', { className: 'dsh-simplify-stepper-val' }, displayVal),
+                      h('span', { className: 'dsh-tide-stepper-val' }, displayVal),
                       h('button', {
                         type: 'button',
-                        className: 'dsh-simplify-stepper-btn is-inc',
+                        className: 'dsh-tide-stepper-btn is-inc',
                         disabled: num >= max,
                         'aria-label': `${item.title} 增加`,
                         onClick: () => handleNumberChange(item.key, Math.min(max, num + 1))
@@ -220,22 +220,22 @@ export function createPluginSettings(shared: DockShared) {
                 const active = config[item.key] as boolean
                 return h('div', {
                   key: item.key,
-                  className: 'dsh-simplify-settings-row'
+                  className: 'dsh-tide-settings-row'
                 },
-                  h('div', { className: 'dsh-simplify-settings-row-text' },
-                    h('div', { className: 'dsh-simplify-settings-item-title' }, item.title),
-                    h('div', { className: 'dsh-simplify-settings-item-desc' }, item.description)
+                  h('div', { className: 'dsh-tide-settings-row-text' },
+                    h('div', { className: 'dsh-tide-settings-item-title' }, item.title),
+                    h('div', { className: 'dsh-tide-settings-item-desc' }, item.description)
                   ),
                   h('button', {
                     type: 'button',
                     role: 'switch',
-                    className: 'dsh-simplify-switch',
+                    className: 'dsh-tide-switch',
                     'aria-checked': active,
                     'data-active': active,
                     'aria-label': `${item.title}: ${active ? '已启用' : '已禁用'}`,
                     onClick: () => handleToggle(item.key)
                   },
-                    h('span', { className: 'dsh-simplify-switch-knob' })
+                    h('span', { className: 'dsh-tide-switch-knob' })
                   )
                 )
               })
@@ -245,15 +245,15 @@ export function createPluginSettings(shared: DockShared) {
       ),
 
       // 底部操作区
-      h('div', { className: 'dsh-simplify-settings-footer' },
-        h('div', { className: 'dsh-simplify-settings-status' },
+      h('div', { className: 'dsh-tide-settings-footer' },
+        h('div', { className: 'dsh-tide-settings-status' },
           savedNotice
-            ? h('span', { className: 'dsh-simplify-settings-notice' }, '✓ 设置已更新并即时生效')
-            : h('span', { className: 'dsh-simplify-settings-hint' }, '设置已持久化存储至本地')
+            ? h('span', { className: 'dsh-tide-settings-notice' }, '✓ 设置已更新并即时生效')
+            : h('span', { className: 'dsh-tide-settings-hint' }, '设置已持久化存储至本地')
         ),
         h('button', {
           type: 'button',
-          className: 'dsh-simplify-settings-reset-btn',
+          className: 'dsh-tide-settings-reset-btn',
           onClick: handleReset
         }, '恢复全部默认设置')
       )

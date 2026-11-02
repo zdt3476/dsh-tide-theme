@@ -10,7 +10,7 @@
 import { classifyPercent, readPercent } from './stat-colors'
 
 const DOCK = '[data-composer-seat]'
-const MARK = 'data-dsh-simplify-pct'
+const MARK = 'data-dsh-tide-pct'
 
 interface Target {
   element: HTMLElement
@@ -77,7 +77,7 @@ export function mountStatColors(): StatColorsMount | null {
       try {
         apply()
       } catch (error) {
-        console.error('[dsh-simplify-theme] stat colors failed:', error)
+        console.error('[dsh-tide-theme] stat colors failed:', error)
       }
     })
   }

@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dsh-simplify-theme"><img src="https://img.shields.io/npm/v/dsh-simplify-theme?color=2563eb&label=npm" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/dsh-tide-theme"><img src="https://img.shields.io/npm/v/dsh-tide-theme?color=2563eb&label=npm" alt="npm version" /></a>
   <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin"><img src="https://img.shields.io/badge/dsh--market-verified-16a34a" alt="dsh market" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="license" /></a>
 </p>
 
-> **关于名字**：本插件最初叫 `dsh-simplify-theme`（极简主题），后来主题演化为冰蓝玻璃材质，故显示名改为「潮汐玻璃 · Tide Glass」。
-> 为不破坏已安装用户的链接与安装命令，**npm 包名与插件 ID 保持 `dsh-simplify-theme` 不变**。
+> **关于名字**：本插件原名 `dsh-simplify-theme`（极简主题），主题演化为冰蓝玻璃材质后更名为 **`dsh-tide-theme`**（潮汐玻璃 · Tide Glass）。
+> 如果你是从旧包升级过来的，请先卸载旧包再安装新包；本地配置需重新设置一次（存储键已随包名更新）。
 
 ---
 
@@ -162,13 +162,13 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 
 ### 方式 1：通过官方插件市场（推荐）
 
-在 DSH 插件市场搜索 **`dsh-simplify-theme`**（显示名「潮汐玻璃」），点击安装后重启客户端。
+在 DSH 插件市场搜索 **`dsh-tide-theme`**（显示名「潮汐玻璃」），点击安装后重启客户端。
 
 ### 方式 2：通过命令行安装
 
 ```sh
 # npm
-dsh plugin --profile desktop add dsh-simplify-theme
+dsh plugin --profile desktop add dsh-tide-theme
 
 # GitHub 源码
 dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-simplify-theme.git
@@ -177,7 +177,7 @@ dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-simplify-the
 dsh plugin --profile desktop add link:"$PWD"
 
 # GitHub Release 预构建包
-dsh plugin --profile desktop add https://github.com/zdt3476/dsh-simplify-theme/releases/download/v0.3.9/dsh-simplify-theme-0.3.9.tgz
+dsh plugin --profile desktop add https://github.com/zdt3476/dsh-simplify-theme/releases/download/v0.4.0/dsh-tide-theme-0.4.0.tgz
 ```
 
 安装后在 **设置 → 插件** 中启用，并按下 `Cmd/Ctrl + R` 重载客户端。

@@ -124,67 +124,67 @@ export function createPermissionControl(props: PermissionControlProps) {
     if (label === null) return null
 
     const rows: unknown[] = []
-    if (catalog === null && error === null) rows.push(h('div', { 'data-dsh-simplify-note': '' }, t('permission.loading')))
-    if (error !== null) rows.push(h('div', { 'data-dsh-simplify-note': '', 'data-dsh-simplify-error': '' }, error))
+    if (catalog === null && error === null) rows.push(h('div', { 'data-dsh-tide-note': '' }, t('permission.loading')))
+    if (error !== null) rows.push(h('div', { 'data-dsh-tide-note': '', 'data-dsh-tide-error': '' }, error))
     for (const option of catalog?.options ?? []) {
       const active = option.value === current
       const name = presetLabel(option.value, option.name, labels)
       rows.push(
         h('button', {
           type: 'button',
-          'data-dsh-simplify-item': '',
-          'data-dsh-simplify-risk': permissionRisk(option.value),
+          'data-dsh-tide-item': '',
+          'data-dsh-tide-risk': permissionRisk(option.value),
           'data-active': active ? 'true' : 'false',
           key: option.value,
           disabled: busy !== null,
           onClick: () => pick(option.value)
         },
-        h('span', { 'data-dsh-simplify-risk-dot': '', 'aria-hidden': 'true' }),
+        h('span', { 'data-dsh-tide-risk-dot': '', 'aria-hidden': 'true' }),
         h('span', { style: { flex: 1, minWidth: 0 } }, name),
-        option.value === 'auto' ? h('span', { 'data-dsh-simplify-badge': '' }, t('permission.experimental')) : null,
-        active ? h('span', { 'data-dsh-simplify-check': '', 'aria-hidden': 'true' }, '✓') : null,
-        option.description !== undefined ? h('span', { 'data-dsh-simplify-item-detail': '' }, option.description) : null
+        option.value === 'auto' ? h('span', { 'data-dsh-tide-badge': '' }, t('permission.experimental')) : null,
+        active ? h('span', { 'data-dsh-tide-check': '', 'aria-hidden': 'true' }, '✓') : null,
+        option.description !== undefined ? h('span', { 'data-dsh-tide-item-detail': '' }, option.description) : null
         )
       )
     }
     if (confirmPreset !== null) {
       rows.push(
-        h('div', { 'data-dsh-simplify-note': '', key: 'confirm' },
+        h('div', { 'data-dsh-tide-note': '', key: 'confirm' },
           h('div', { style: { marginBottom: 6 } }, t('permission.confirmTitle')),
           h('button', {
             type: 'button',
-            'data-dsh-simplify-item': '',
+            'data-dsh-tide-item': '',
             onClick: () => { const target = confirmPreset; setConfirmPreset(null); void submit(target) }
           }, t('permission.confirmEnable')),
-          h('button', { type: 'button', 'data-dsh-simplify-item': '', onClick: () => setConfirmPreset(null) }, t('permission.cancel'))
+          h('button', { type: 'button', 'data-dsh-tide-item': '', onClick: () => setConfirmPreset(null) }, t('permission.cancel'))
         )
       )
     }
 
-    return h('div', { 'data-dsh-simplify-dock-root': '' },
+    return h('div', { 'data-dsh-tide-dock-root': '' },
       h('button', {
         type: 'button',
-        'data-dsh-simplify-pill': '',
-        'data-dsh-simplify-control': 'permission',
-        'data-dsh-simplify-emphasis': 'permission',
-        'data-dsh-simplify-risk': current === undefined ? 'normal' : permissionRisk(current),
+        'data-dsh-tide-pill': '',
+        'data-dsh-tide-control': 'permission',
+        'data-dsh-tide-emphasis': 'permission',
+        'data-dsh-tide-risk': current === undefined ? 'normal' : permissionRisk(current),
         'aria-haspopup': 'dialog',
         'aria-expanded': open ? 'true' : 'false',
         ref: (el: HTMLElement | null) => { triggerRef.current = el },
         onClick: (event: Event) => { event.stopPropagation(); void toggle() }
       },
-      h('span', { 'data-dsh-simplify-pill-glyph': '', 'aria-hidden': 'true' }),
-      h('span', { 'data-dsh-simplify-pill-label': '' }, label),
-      h('span', { 'data-dsh-simplify-pill-caret': '', 'aria-hidden': 'true' })
+      h('span', { 'data-dsh-tide-pill-glyph': '', 'aria-hidden': 'true' }),
+      h('span', { 'data-dsh-tide-pill-label': '' }, label),
+      h('span', { 'data-dsh-tide-pill-caret': '', 'aria-hidden': 'true' })
       ),
       open ? h('div', {
-        'data-dsh-simplify-popup': '',
+        'data-dsh-tide-popup': '',
         ref: (el: HTMLElement | null) => { popupRef.current = el },
         style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
       },
-      h('div', { 'data-dsh-simplify-popup-head': '' },
-        h('span', { 'data-dsh-simplify-grid-title': '' }, t('permission.title')),
-        h('span', { 'data-dsh-simplify-grid-hint': '' }, t('permission.hint'))
+      h('div', { 'data-dsh-tide-popup-head': '' },
+        h('span', { 'data-dsh-tide-grid-title': '' }, t('permission.title')),
+        h('span', { 'data-dsh-tide-grid-hint': '' }, t('permission.hint'))
       ),
       rows) : null
     )

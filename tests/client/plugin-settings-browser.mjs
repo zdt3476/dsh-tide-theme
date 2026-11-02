@@ -96,18 +96,18 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
     root.render(React.createElement(SettingsComponent, {}))
   })
 
-  await page.waitForSelector('[data-dsh-simplify-settings]')
+  await page.waitForSelector('[data-dsh-tide-settings]')
   await page.screenshot({ path: '/tmp/plugin-settings.png' })
 
   // 1. 验证标题与分组结构
-  const title = await page.locator('.dsh-simplify-settings-title').textContent()
+  const title = await page.locator('.dsh-tide-settings-title').textContent()
   assert.equal(title, '潮汐玻璃 · 主题与增强功能配置')
 
-  const groups = page.locator('.dsh-simplify-settings-card')
+  const groups = page.locator('.dsh-tide-settings-card')
   assert.equal(await groups.count(), 5)
 
   // 验证各分组标题
-  const groupTitles = await page.locator('.dsh-simplify-settings-group-title').allTextContents()
+  const groupTitles = await page.locator('.dsh-tide-settings-group-title').allTextContents()
   assert.deepEqual(groupTitles, [
     '底栏用量与性能看板',
     '子代理协同派发图',
@@ -117,19 +117,19 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   ])
 
   // 2. 验证9个功能开关与2个数值步进器（共11项设置，已移除可视化无效的 permissionControl）
-  const switches = page.locator('.dsh-simplify-switch')
+  const switches = page.locator('.dsh-tide-switch')
   assert.equal(await switches.count(), 9)
   assert.equal(await switches.nth(0).getAttribute('data-active'), 'true')
   assert.equal(await switches.nth(3).getAttribute('data-active'), 'false') // delegationExpandedDefault
 
-  const steppers = page.locator('.dsh-simplify-stepper')
+  const steppers = page.locator('.dsh-tide-stepper')
   assert.equal(await steppers.count(), 2)
 
   // 验证初始数值显示
-  const pinnedStepper = page.locator('[data-dsh-simplify-stepper="sidebarPinnedLimit"]')
-  const unpinnedStepper = page.locator('[data-dsh-simplify-stepper="sidebarUnpinnedLimit"]')
-  assert.equal(await pinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '5 个')
-  assert.equal(await unpinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '5 个')
+  const pinnedStepper = page.locator('[data-dsh-tide-stepper="sidebarPinnedLimit"]')
+  const unpinnedStepper = page.locator('[data-dsh-tide-stepper="sidebarUnpinnedLimit"]')
+  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
+  assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
 
   // 3. 点击切换开关
   await switches.nth(0).click() // 关闭 dockStats
@@ -137,14 +137,14 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
 
   // 点击步进器调整数值
   await pinnedStepper.locator('.is-inc').click() // 5 -> 6
-  assert.equal(await pinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '6 个')
+  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '6 个')
 
   await unpinnedStepper.locator('.is-dec').click() // 5 -> 4
-  assert.equal(await unpinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '4 个')
+  assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '4 个')
 
   // 验证保存提示短提示
-  await page.waitForSelector('.dsh-simplify-settings-notice')
-  assert.equal(await page.locator('.dsh-simplify-settings-notice').textContent(), '✓ 设置已更新并即时生效')
+  await page.waitForSelector('.dsh-tide-settings-notice')
+  assert.equal(await page.locator('.dsh-tide-settings-notice').textContent(), '✓ 设置已更新并即时生效')
 
   // 验证 localStorage 持久化内容
   const storedConfig = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.simplify-theme.config')))
@@ -153,12 +153,12 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   assert.equal(storedConfig.sidebarUnpinnedLimit, 4)
 
   // 4. 点击恢复全部默认设置
-  await page.locator('.dsh-simplify-settings-reset-btn').click()
+  await page.locator('.dsh-tide-settings-reset-btn').click()
   await page.waitForFunction(() => {
-    const sw = document.querySelectorAll('.dsh-simplify-switch')
+    const sw = document.querySelectorAll('.dsh-tide-switch')
     return sw[0]?.getAttribute('data-active') === 'true'
   })
   assert.equal(await switches.nth(0).getAttribute('data-active'), 'true')
-  assert.equal(await pinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '5 个')
-  assert.equal(await unpinnedStepper.locator('.dsh-simplify-stepper-val').textContent(), '5 个')
+  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
+  assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
 })

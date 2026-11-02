@@ -87,8 +87,8 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
     document.head.append(style)
 
     // 设置置顶持久化项（4 个工作区置顶）
-    localStorage.setItem('dsh-simplify-theme.pinned-workspaces', JSON.stringify([
-      'default', 'dsh-simplify-theme', 'web-dashboard', 'api-service'
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces', JSON.stringify([
+      'default', 'dsh-tide-theme', 'web-dashboard', 'api-service'
     ]))
 
     // 模拟 DSH 真实侧栏 DOM 结构
@@ -114,7 +114,7 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
         <!-- 工作区列表真实容器 -->
         <div class="workspace-list-container">
           <div><span><div data-row-key="workspace:default" style="padding:6px 8px; font-size:13px;">📁 default</div></span></div>
-          <div><span><div data-row-key="workspace:dsh-simplify-theme" style="padding:6px 8px; font-size:13px;">📁 dsh-simplify-theme</div></span></div>
+          <div><span><div data-row-key="workspace:dsh-tide-theme" style="padding:6px 8px; font-size:13px;">📁 dsh-tide-theme</div></span></div>
           <div><span><div data-row-key="workspace:web-dashboard" style="padding:6px 8px; font-size:13px;">📁 web-dashboard</div></span></div>
           <div><span><div data-row-key="workspace:api-service" style="padding:6px 8px; font-size:13px;">📁 api-service</div></span></div>
           <div><span><div data-row-key="workspace:server" style="padding:6px 8px; font-size:13px;">📁 server</div></span></div>
@@ -125,7 +125,7 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
 
     const workspaces = [
       { workspaceId: 'default', sessionIds: [] },
-      { workspaceId: 'dsh-simplify-theme', sessionIds: [] },
+      { workspaceId: 'dsh-tide-theme', sessionIds: [] },
       { workspaceId: 'web-dashboard', sessionIds: [] },
       { workspaceId: 'api-service', sessionIds: [] },
       { workspaceId: 'server', sessionIds: [] },
@@ -150,20 +150,20 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
     })
   })
 
-  await page.waitForSelector('[data-dsh-simplify-section="pinned"]')
+  await page.waitForSelector('[data-dsh-tide-section="pinned"]')
   await page.screenshot({ path: '/tmp/sidebar-sections.png' })
 
   // 1. 验证小节标头正确插入在列表容器内，而不是在搜索框或Tabs上方
-  const pinnedHeader = page.locator('[data-dsh-simplify-section="pinned"]')
-  const unpinnedHeader = page.locator('[data-dsh-simplify-section="unpinned"]')
+  const pinnedHeader = page.locator('[data-dsh-tide-section="pinned"]')
+  const unpinnedHeader = page.locator('[data-dsh-tide-section="unpinned"]')
 
   assert.equal(await pinnedHeader.isVisible(), true)
   assert.equal(await unpinnedHeader.isVisible(), true)
 
   // 标头必须是列表容器的子元素
   const inListContainer = await page.evaluate(() => {
-    const p = document.querySelector('[data-dsh-simplify-section="pinned"]')
-    const u = document.querySelector('[data-dsh-simplify-section="unpinned"]')
+    const p = document.querySelector('[data-dsh-tide-section="pinned"]')
+    const u = document.querySelector('[data-dsh-tide-section="unpinned"]')
     const list = document.querySelector('.workspace-list-container')
     return p?.parentElement === list && u?.parentElement === list
   })
@@ -183,11 +183,11 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
   const order = await page.evaluate(() => {
     const list = document.querySelector('.workspace-list-container')
     const children = [...list.children]
-    const pinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-simplify-section') === 'pinned')
-    const unpinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-simplify-section') === 'unpinned')
+    const pinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-tide-section') === 'pinned')
+    const unpinnedHeaderIndex = children.findIndex((el) => el.getAttribute('data-dsh-tide-section') === 'unpinned')
     const rows = [...list.querySelectorAll('[data-row-key^="workspace:"]')].map((row) => ({
       id: (row.getAttribute('data-row-key') ?? '').replace('workspace:', ''),
-      pinned: row.parentElement?.parentElement?.hasAttribute('data-dsh-simplify-pinned') === true,
+      pinned: row.parentElement?.parentElement?.hasAttribute('data-dsh-tide-pinned') === true,
       top: row.getBoundingClientRect().top
     }))
     return { children: children.length, pinnedHeaderIndex, unpinnedHeaderIndex, rows }
@@ -217,7 +217,7 @@ test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（·
   await page.evaluate(async () => {
     const { mountSidebarGroups } = await import('/src/client/sidebar-groups.ts')
 
-    localStorage.setItem('dsh-simplify-theme.pinned-workspaces', JSON.stringify(['default']))
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces', JSON.stringify(['default']))
 
     const mount = document.getElementById('mount')
     mount.innerHTML = `
@@ -261,7 +261,7 @@ test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（·
   })
 
   // 1. 验证顶栏不再存在置顶按钮
-  assert.equal(await page.locator('[data-dsh-simplify-pin-toggle]').count(), 0, '顶栏置顶按钮必须彻底移除')
+  assert.equal(await page.locator('[data-dsh-tide-pin-toggle]').count(), 0, '顶栏置顶按钮必须彻底移除')
 
   // 2. 模拟用户点击 server 的菜单按钮并唤出原生菜单
   await page.evaluate(() => {
@@ -277,13 +277,13 @@ test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（·
   })
 
   // 3. 验证菜单项被注入，且状态为"置顶工作区"（因为此时 server 未置顶）
-  await page.waitForSelector('[data-dsh-simplify-workspace-pin="server"]')
-  const pinItem = page.locator('[data-dsh-simplify-workspace-pin="server"]')
+  await page.waitForSelector('[data-dsh-tide-workspace-pin="server"]')
+  const pinItem = page.locator('[data-dsh-tide-workspace-pin="server"]')
   assert.match(await pinItem.textContent(), /置顶工作区/)
 
   // 4. 点击该项，验证 server 被置顶
   await pinItem.click()
-  const pinnedAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh-simplify-theme.pinned-workspaces') || '[]'))
+  const pinnedAfter = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh-tide-theme.pinned-workspaces') || '[]'))
   assert.ok(pinnedAfter.includes('server'), 'server 应加入置顶存储')
 
   // 5. 再次模拟打开 server 菜单，验证状态变为"取消置顶"
@@ -300,7 +300,7 @@ test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（·
     document.body.appendChild(menu)
   })
 
-  await page.waitForSelector('[data-dsh-simplify-workspace-pin="server"]')
-  const unpinItem = page.locator('[data-dsh-simplify-workspace-pin="server"]')
+  await page.waitForSelector('[data-dsh-tide-workspace-pin="server"]')
+  const unpinItem = page.locator('[data-dsh-tide-workspace-pin="server"]')
   assert.match(await unpinItem.textContent(), /取消置顶/)
 })

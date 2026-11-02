@@ -6,7 +6,7 @@
  * 只记录「选了哪个供应商/模型」，不涉及任何对话内容。
  */
 
-export const USAGE_KEY = 'dsh-simplify-theme.usage'
+export const USAGE_KEY = 'dsh-tide-theme.usage'
 
 export interface LocalUsage {
   providers: Record<string, number>

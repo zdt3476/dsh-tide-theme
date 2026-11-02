@@ -8,9 +8,9 @@
 
 const CARD = '[data-composer-card]'
 const DOCK_ROW = '[data-composer-dock]'
-const HOST_SELECTOR = '[data-dsh-simplify-dock-root], [data-dsh-simplify-dock-center], [data-dsh-simplify-hero-host], [data-dsh-simplify-seat]'
-const VAR = '--dsh-simplify-card-width'
-const INSET = '--dsh-simplify-dock-inset-x'
+const HOST_SELECTOR = '[data-dsh-tide-dock-root], [data-dsh-tide-dock-center], [data-dsh-tide-hero-host], [data-dsh-tide-seat]'
+const VAR = '--dsh-tide-card-width'
+const INSET = '--dsh-tide-dock-inset-x'
 
 export interface DockAlignHandle {
   dispose: () => void

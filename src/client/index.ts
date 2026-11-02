@@ -33,7 +33,7 @@ import type { DockShared, H, ReactHooks } from './dock-shared'
 import type { ModelDirectories } from './model-directory'
 import type { PermissionSession } from './permission-control'
 
-const PLUGIN_ID = 'dsh-simplify-theme'
+const PLUGIN_ID = 'dsh-tide-theme'
 
 /** 构建时注入；未注入（本地直接跑源码）时回落到 dev。 */
 declare const __DSH_SIMPLIFY_BUILD__: string
@@ -233,10 +233,10 @@ function installStyles(ctx: ClientCtx): void {
     return () => {
       tag.remove()
       if (typeof document !== 'undefined') {
-        document.body.removeAttribute('data-dsh-simplify-theme')
+        document.body.removeAttribute('data-dsh-tide-theme')
       }
     }
-  }, 'simplify-theme: ui styles')
+  }, 'tide-theme: ui styles')
 }
 
 function mountSidebarTabsSafe(ctx: ClientCtx): void {
@@ -284,7 +284,7 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
         mount = { unmount: () => {} }
       }
     }
-  }, 'simplify-theme: sidebar tabs')
+  }, 'tide-theme: sidebar tabs')
 
   ctx.effect(() => {
     const filterT = withFallback(ctx.locale.bind(PLUGIN_ID), DICT_ZH)
@@ -308,7 +308,7 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
       filterMount?.unmount()
       if (filterMount === null) filterMount = { unmount: () => {} }
     }
-  }, 'simplify-theme: sidebar filter')
+  }, 'tide-theme: sidebar filter')
 
   ctx.effect(() => {
     if (typeof document === 'undefined') return
@@ -337,17 +337,17 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
       groupsMount?.unmount()
       if (groupsMount === null) groupsMount = { unmount: () => {} }
     }
-  }, 'simplify-theme: sidebar groups')
+  }, 'tide-theme: sidebar groups')
 
   ctx.effect(() => {
     const mount = mountStatColors()
     return () => mount?.unmount()
-  }, 'simplify-theme: stat colors')
+  }, 'tide-theme: stat colors')
 
   ctx.effect(() => {
     const mount = mountDockAlign()
     return () => mount?.dispose()
-  }, 'simplify-theme: dock align')
+  }, 'tide-theme: dock align')
 
   ctx.effect(() => {
     const sessions = ctx.sessions?.list
@@ -372,7 +372,7 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
       },
       cancelSession: (sessionId: string) => {
         const binding = ctx.sessions?.binding(sessionId) as { session?: { cancel?: () => Promise<unknown> } } | undefined
-        void binding?.session?.cancel?.().catch?.((error: unknown) => console.error('[dsh-simplify-theme] cancel subagent failed:', error))
+        void binding?.session?.cancel?.().catch?.((error: unknown) => console.error('[dsh-tide-theme] cancel subagent failed:', error))
       }
     })
     const mount = mountTurnDuration({
@@ -384,7 +384,7 @@ function mountSidebarTabsSafe(ctx: ClientCtx): void {
       mount?.unmount()
       panel?.dispose()
     }
-  }, 'simplify-theme: turn duration')
+  }, 'tide-theme: turn duration')
 }
 
 function registerDock(ctx: ClientCtx): void {
@@ -468,11 +468,11 @@ function registerPluginSettings(ctx: ClientCtx): void {
   const shared: DockShared = { h, hooks, t }
   const settingsComponent = createPluginSettings(shared)
 
-  // 1. 注册到包级配置：当用户在插件管理列表点击 dsh-simplify-theme 时直接呈现
+  // 1. 注册到包级配置：当用户在插件管理列表点击 dsh-tide-theme 时直接呈现
   ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register(
     {
       name: 'plugins.bundle.config',
-      key: 'dsh-simplify-theme'
+      key: 'dsh-tide-theme'
     },
     settingsComponent as never
   ))
@@ -481,7 +481,7 @@ function registerPluginSettings(ctx: ClientCtx): void {
   ctx.slots.inject('plugins.row.config', () => ctx.slots.register(
     {
       name: 'plugins.row.config',
-      key: 'dsh-simplify-theme#simplify-theme'
+      key: 'dsh-tide-theme#simplify-theme'
     },
     settingsComponent as never
   ))
@@ -500,7 +500,7 @@ export function apply(ctx: ClientCtx): void {
   // 每次激活打印一次构建标记，并写到 <html> 上：重启后仍看不到新样式时，
   // 先确认运行的是不是最新构建，而不是继续怀疑功能本身。
   console.info(`[${PLUGIN_ID}] 已加载构建 ${BUILD}`)
-  if (typeof document !== 'undefined') document.documentElement.dataset.dshSimplifyBuild = BUILD
+  if (typeof document !== 'undefined') document.documentElement.dataset.dshTideBuild = BUILD
   step('locale', () => ctx.locale.register(PLUGIN_ID, { zh: DICT_ZH, en: DICT_EN }))
 
   // 独立管理 body 门控属性，不与 ctx.theme 服务时序强耦合：
@@ -510,9 +510,9 @@ export function apply(ctx: ClientCtx): void {
     const syncGate = () => {
       if (typeof document !== 'undefined') {
         if (currentConfig.themeOverrides) {
-          document.body.setAttribute('data-dsh-simplify-theme', '')
+          document.body.setAttribute('data-dsh-tide-theme', '')
         } else {
-          document.body.removeAttribute('data-dsh-simplify-theme')
+          document.body.removeAttribute('data-dsh-tide-theme')
         }
       }
     }
@@ -524,10 +524,10 @@ export function apply(ctx: ClientCtx): void {
     return () => {
       unsub()
       if (typeof document !== 'undefined') {
-        document.body.removeAttribute('data-dsh-simplify-theme')
+        document.body.removeAttribute('data-dsh-tide-theme')
       }
     }
-  }, 'simplify-theme: body gate')
+  }, 'tide-theme: body gate')
 
   if (ctx.theme !== undefined) {
     step('theme', () => {
@@ -550,7 +550,7 @@ export function apply(ctx: ClientCtx): void {
           unsub()
           disposer?.()
         }
-      }, 'simplify-theme: token layer')
+      }, 'tide-theme: token layer')
     })
   }
   step('styles', () => installStyles(ctx))

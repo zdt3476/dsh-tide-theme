@@ -19,7 +19,7 @@ export interface ThemeTokenValue {
 export type ThemeTokens = Readonly<Record<string, ThemeTokenValue>>
 
 /** override 层的身份；同一 source 重复注册会整体替换旧层。 */
-export const THEME_SOURCE = 'dsh-simplify-theme'
+export const THEME_SOURCE = 'dsh-tide-theme'
 
 export const SIMPLIFY_TOKENS: ThemeTokens = Object.freeze({
   // —— 画布与表面分层（完全对齐看板浮窗的高质感冰蓝玻璃 / 曜石深空玻璃） ——

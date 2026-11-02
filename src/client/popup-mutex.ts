@@ -28,7 +28,7 @@ function teardownListeners(): void {
 function onPointerDown(event: Event): void {
   const target = event.target
   if (!(target instanceof Element)) return
-  if (target.closest('[data-dsh-simplify-popup]') !== null || target.closest('[data-dsh-simplify-pill]') !== null) return
+  if (target.closest('[data-dsh-tide-popup]') !== null || target.closest('[data-dsh-tide-pill]') !== null) return
   for (const close of openers) close()
   teardownListeners()
 }

@@ -49,7 +49,7 @@ export interface TurnDurationMount {
 
 const TURN_TAIL = '[data-turn-tail]'
 const ACTIONS_END = '[data-clock="end"]'
-const MARK = 'data-dsh-simplify-duration'
+const MARK = 'data-dsh-tide-duration'
 /** 回合结束后 DOM 可能还没渲染完，按这几档延迟重试。 */
 const RETRY_DELAYS = [0, 120, 400]
 
@@ -120,14 +120,14 @@ export function mountTurnDuration(options: TurnDurationOptions): TurnDurationMou
     try {
       apply()
     } catch (error) {
-      console.error('[dsh-simplify-theme] turn duration failed:', error)
+      console.error('[dsh-tide-theme] turn duration failed:', error)
     }
   })
   const unsubscribeConfig = onSimplifyConfigChange(() => {
     try {
       apply()
     } catch (error) {
-      console.error('[dsh-simplify-theme] turn duration config change failed:', error)
+      console.error('[dsh-tide-theme] turn duration config change failed:', error)
     }
   })
   apply()

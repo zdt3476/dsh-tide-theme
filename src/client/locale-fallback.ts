@@ -31,7 +31,7 @@ export function withFallback(bind: LocaleBind, fallback: Record<string, string>)
     if (template === undefined) return value ?? key
     if (!warned.has(key)) {
       warned.add(key)
-      console.warn(`[dsh-simplify-theme] locale key "${key}" unresolved by host, using built-in copy`)
+      console.warn(`[dsh-tide-theme] locale key "${key}" unresolved by host, using built-in copy`)
     }
     return params === undefined ? template : interpolate(template, params)
   }

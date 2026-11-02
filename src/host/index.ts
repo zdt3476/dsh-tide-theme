@@ -6,6 +6,6 @@
  * 从而让 `dsh.client` 声明被 client-modules 扫描并下发给浏览器。
  */
 
-export const name = 'dsh-simplify-theme'
+export const name = 'dsh-tide-theme'
 
 export function apply(): void {}

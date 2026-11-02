@@ -29,26 +29,26 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
   const header = slot === null ? null : sidebarHeader(slot)
   if (slot === null || header === null) return null
 
-  header.setAttribute('data-dsh-simplify-sidebar-header', '')
+  header.setAttribute('data-dsh-tide-sidebar-header', '')
   const host = options.createElement('div')
-  host.dataset.dshSimplifyFilterHost = ''
-  const tabs = header.parentElement?.querySelector('[data-dsh-simplify-tabs-host]')
+  host.dataset.dshTideFilterHost = ''
+  const tabs = header.parentElement?.querySelector('[data-dsh-tide-tabs-host]')
   ;(tabs ?? header).insertAdjacentElement('afterend', host)
 
   const input = options.createElement('input') as HTMLInputElement
   input.type = 'text'
-  input.dataset.dshSimplifyFilter = ''
+  input.dataset.dshTideFilter = ''
   input.placeholder = options.locale('filter.placeholder')
   input.setAttribute('aria-label', options.locale('filter.ariaLabel'))
   host.appendChild(input)
 
   const nativeSearch = header.querySelector('input')?.parentElement?.parentElement
   const nativeOptions = header.querySelector<HTMLElement>('button[aria-label="视图选项"], button[aria-label="View options"]')
-  nativeSearch?.setAttribute('data-dsh-simplify-native-filter', '')
-  nativeOptions?.setAttribute('data-dsh-simplify-native-filter', '')
+  nativeSearch?.setAttribute('data-dsh-tide-native-filter', '')
+  nativeOptions?.setAttribute('data-dsh-tide-native-filter', '')
 
   const grouping = options.createElement('select') as HTMLSelectElement
-  grouping.dataset.dshSimplifyGrouping = ''
+  grouping.dataset.dshTideGrouping = ''
   grouping.setAttribute('aria-label', options.locale('filter.groupBy'))
   for (const value of ['workspace', 'workspace-tree', 'flat'] as const) {
     const option = document.createElement('option')
@@ -73,14 +73,14 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
   let frame = 0
   const apply = () => {
     frame = 0
-    slot.toggleAttribute('data-dsh-simplify-filtering', input.value.trim() !== '')
+    slot.toggleAttribute('data-dsh-tide-filtering', input.value.trim() !== '')
     const hidden = computeHiddenRows(listRows(slot as Element).map(readRow), input.value)
     for (const row of listRows(slot as Element)) {
       const key = row.getAttribute('data-row-key') ?? ''
       const hide = hidden.has(key)
       const next = hide ? 'none' : ''
-      if (row.getAttribute('data-dsh-simplify-hidden') !== String(hide)) {
-        row.setAttribute('data-dsh-simplify-hidden', String(hide))
+      if (row.getAttribute('data-dsh-tide-hidden') !== String(hide)) {
+        row.setAttribute('data-dsh-tide-hidden', String(hide))
         ;(row as HTMLElement).style.display = next
       }
     }
@@ -101,13 +101,13 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
       if (frame !== 0) window.cancelAnimationFrame(frame)
       // 卸载时还原所有被隐藏的行。
       for (const row of listRows(slot as Element)) {
-        row.removeAttribute('data-dsh-simplify-hidden')
+        row.removeAttribute('data-dsh-tide-hidden')
         ;(row as HTMLElement).style.display = ''
       }
-      slot.removeAttribute('data-dsh-simplify-filtering')
-      header.removeAttribute('data-dsh-simplify-sidebar-header')
-      nativeSearch?.removeAttribute('data-dsh-simplify-native-filter')
-      nativeOptions?.removeAttribute('data-dsh-simplify-native-filter')
+      slot.removeAttribute('data-dsh-tide-filtering')
+      header.removeAttribute('data-dsh-tide-sidebar-header')
+      nativeSearch?.removeAttribute('data-dsh-tide-native-filter')
+      nativeOptions?.removeAttribute('data-dsh-tide-native-filter')
       host.remove()
     }
   }

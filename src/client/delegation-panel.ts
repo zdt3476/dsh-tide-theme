@@ -16,8 +16,8 @@ import { loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
 const TURN = '[data-chat-turn]'
 const TOOL_ROW = '[data-tool]'
 const NODE_KEY = '[data-chat-node-key]'
-const HOST_ATTR = 'data-dsh-simplify-delegations'
-const SOURCE_ATTR = 'data-dsh-simplify-delegation-source'
+const HOST_ATTR = 'data-dsh-tide-delegations'
+const SOURCE_ATTR = 'data-dsh-tide-delegation-source'
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
 const UUID_ONLY = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -231,7 +231,7 @@ export function paintConnectors(stage: HTMLElement, hub: HTMLElement, agents: HT
   svg.setAttribute('height', String(stageBox.height))
 
   const nodes = [...agents.children]
-    .filter((child): child is HTMLElement => child instanceof HTMLElement && !child.hasAttribute('data-dsh-simplify-lines'))
+    .filter((child): child is HTMLElement => child instanceof HTMLElement && !child.hasAttribute('data-dsh-tide-lines'))
   if (nodes.length === 0) return
 
   // 外侧分支从枢纽侧缘引出，内侧从底部引出，对齐参考图的柔和扇出曲线。
@@ -325,7 +325,7 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
   let frame = 0
   let debug = false
   try {
-    debug = localStorage.getItem('dsh-simplify-theme.debug') === '1'
+    debug = localStorage.getItem('dsh-tide-theme.debug') === '1'
   } catch {
     debug = false
   }
@@ -492,7 +492,7 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     const copy = el('span', 'subagent-topology-root-copy')
     const rootTitleRow = el('div', 'subagent-root-title-row')
     const rootTitle = head(options.locale('delegation.agent') || 'Orchestrator', '')
-    rootTitle.setAttribute('data-dsh-simplify-root-title', '')
+    rootTitle.setAttribute('data-dsh-tide-root-title', '')
     const activeChip = el('span', 'subagent-active-chip')
     activeChip.dataset.running = String(counts.running > 0)
     const rootState = aggregateBatchState(counts)
@@ -521,7 +521,7 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     agents.dataset.count = String(Math.min(4, Math.max(1, members.length)))
     members.forEach((member, memberIndex) => agents.append(nodeView(member, memberIndex)))
     const svg = document.createElementNS(SVG_NS, 'svg')
-    svg.setAttribute('data-dsh-simplify-lines', '')
+    svg.setAttribute('data-dsh-tide-lines', '')
     svg.setAttribute('aria-hidden', 'true')
     svg.setAttribute('class', 'subagent-topology-lines')
     const path = document.createElementNS(SVG_NS, 'path')
@@ -716,7 +716,7 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     for (const row of document.querySelectorAll(`[${SOURCE_ATTR}]`)) {
       if (!live.has(row)) row.removeAttribute(SOURCE_ATTR)
     }
-    if (debug) console.info(`[dsh-simplify-theme] 委派图: 工具行 ${rowCount} 条, 已匹配 ${live.size} 条, 会话 ${parentId ?? '未知'}`)
+    if (debug) console.info(`[dsh-tide-theme] 委派图: 工具行 ${rowCount} 条, 已匹配 ${live.size} 条, 会话 ${parentId ?? '未知'}`)
 
     if (running && ticker === undefined) ticker = window.setInterval(schedule, 1000)
     else if (!running && ticker !== undefined) {
@@ -741,7 +741,7 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
       try {
         sync()
       } catch (error) {
-        console.error('[dsh-simplify-theme] delegation panel failed:', error)
+        console.error('[dsh-tide-theme] delegation panel failed:', error)
       }
     })
   }

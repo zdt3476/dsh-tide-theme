@@ -124,11 +124,11 @@ export function createModelControl(props: ModelControlProps) {
     const pill = (kind: 'model' | 'effort', label: unknown, color?: string) =>
       h('button', {
         type: 'button',
-        'data-dsh-simplify-pill': '',
-        'data-dsh-simplify-control': kind,
-        'data-dsh-simplify-emphasis': kind,
+        'data-dsh-tide-pill': '',
+        'data-dsh-tide-control': kind,
+        'data-dsh-tide-emphasis': kind,
         title: kind === 'model' && name !== '' ? `${providerLabel} / ${name}` : undefined,
-        style: color === undefined ? undefined : { '--dsh-simplify-provider-color': color },
+        style: color === undefined ? undefined : { '--dsh-tide-provider-color': color },
         'aria-label': kind === 'effort' ? `${t('effort.title')}：${effort ?? t('effort.unavailableShort')}` : undefined,
         'aria-haspopup': 'dialog',
         'aria-expanded': open === kind ? 'true' : 'false',
@@ -143,18 +143,18 @@ export function createModelControl(props: ModelControlProps) {
           else setOpen((prev) => (prev === 'effort' ? 'none' : 'effort'))
         }
       },
-      h('span', { 'data-dsh-simplify-pill-glyph': '', 'aria-hidden': 'true' }),
+      h('span', { 'data-dsh-tide-pill-glyph': '', 'aria-hidden': 'true' }),
       label,
-      h('span', { 'data-dsh-simplify-pill-caret': '', 'aria-hidden': 'true' }))
+      h('span', { 'data-dsh-tide-pill-caret': '', 'aria-hidden': 'true' }))
 
     // 供应商色按「有模型的供应商」在面板里的顺序取，保证同面板内不撞色。
     const orderedProviders = groups.filter((candidate) => candidate.models.length > 0)
     const providerIndex = group === undefined ? -1 : orderedProviders.findIndex((candidate) => candidate.id === group.id)
-    const modelPill = pill('model', h('span', { 'data-dsh-simplify-pill-label': '' }, modelLabel), providerIndex < 0 || group === undefined ? undefined : providerColor(group.id, providerIndex))
+    const modelPill = pill('model', h('span', { 'data-dsh-tide-pill-label': '' }, modelLabel), providerIndex < 0 || group === undefined ? undefined : providerColor(group.id, providerIndex))
     const children: unknown[] = [modelPill]
 
-    children.push(h('span', { 'data-dsh-simplify-separator': '', 'aria-hidden': 'true' }, '·'))
-    children.push(pill('effort', h('span', { 'data-dsh-simplify-pill-label': '' }, effort ?? t('effort.unavailableShort'))))
+    children.push(h('span', { 'data-dsh-tide-separator': '', 'aria-hidden': 'true' }, '·'))
+    children.push(pill('effort', h('span', { 'data-dsh-tide-pill-label': '' }, effort ?? t('effort.unavailableShort'))))
 
     let popupNode: unknown = null
 
@@ -163,10 +163,10 @@ export function createModelControl(props: ModelControlProps) {
       const columns: unknown[] = []
       const visibleGroups = groups.filter((group) => group.models.length > 0)
       if (state.status === 'error' || state.error !== null) {
-        columns.push(h('div', { 'data-dsh-simplify-note': '', 'data-dsh-simplify-error': '' }, state.error ?? t('error.load')))
+        columns.push(h('div', { 'data-dsh-tide-note': '', 'data-dsh-tide-error': '' }, state.error ?? t('error.load')))
       }
       if (visibleGroups.length === 0 && state.status !== 'loading') {
-        columns.push(h('div', { 'data-dsh-simplify-note': '' }, t('model.empty')))
+        columns.push(h('div', { 'data-dsh-tide-note': '' }, t('model.empty')))
       }
       for (const [index, group] of visibleGroups.entries()) {
         const color = providerColor(group.id, index)
@@ -177,40 +177,40 @@ export function createModelControl(props: ModelControlProps) {
           models.push(
             h('button', {
               type: 'button',
-              'data-dsh-simplify-item': '',
+              'data-dsh-tide-item': '',
               'data-active': active ? 'true' : 'false',
-              style: { '--dsh-simplify-provider-color': color },
+              style: { '--dsh-tide-provider-color': color },
               key: `m:${group.id}:${model.id}`,
               onClick: () => pickModel(group.id, model.id, model.reasoning)
             },
             h('span', { style: { flex: 1, minWidth: 0 } }, model.name),
-            effortCount > 1 ? h('span', { 'data-dsh-simplify-badge': '' }, String(effortCount)) : null,
-            active ? h('span', { 'data-dsh-simplify-check': '', 'aria-hidden': 'true' }, '✓') : null
+            effortCount > 1 ? h('span', { 'data-dsh-tide-badge': '' }, String(effortCount)) : null,
+            active ? h('span', { 'data-dsh-tide-check': '', 'aria-hidden': 'true' }, '✓') : null
             )
           )
         }
         columns.push(
-          h('div', { 'data-dsh-simplify-column': '', key: `g:${group.id}`, style: { '--dsh-simplify-provider-color': color } },
-            h('div', { 'data-dsh-simplify-group': '' },
-              h('span', { 'data-dsh-simplify-provider-dot': '', 'aria-hidden': 'true' }),
-              h('span', { 'data-dsh-simplify-provider-name': '' }, providerName(group.id, group.name))
+          h('div', { 'data-dsh-tide-column': '', key: `g:${group.id}`, style: { '--dsh-tide-provider-color': color } },
+            h('div', { 'data-dsh-tide-group': '' },
+              h('span', { 'data-dsh-tide-provider-dot': '', 'aria-hidden': 'true' }),
+              h('span', { 'data-dsh-tide-provider-name': '' }, providerName(group.id, group.name))
             ),
-            h('div', { 'data-dsh-simplify-column-body': '' }, models)
+            h('div', { 'data-dsh-tide-column-body': '' }, models)
           )
         )
       }
       popupNode = h('div', {
-        'data-dsh-simplify-popup': '',
-        'data-dsh-simplify-portal-root': '',
-        'data-dsh-simplify-model-grid': '',
+        'data-dsh-tide-popup': '',
+        'data-dsh-tide-portal-root': '',
+        'data-dsh-tide-model-grid': '',
         ref: (el: HTMLElement | null) => { popupRef.current = el },
         style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
       },
-      h('div', { 'data-dsh-simplify-grid-head': '' },
-        h('span', { 'data-dsh-simplify-grid-title': '' }, t('model.title')),
-        visibleGroups.length === 0 ? null : h('span', { 'data-dsh-simplify-grid-hint': '' }, t('model.providers', { count: visibleGroups.length }))
+      h('div', { 'data-dsh-tide-grid-head': '' },
+        h('span', { 'data-dsh-tide-grid-title': '' }, t('model.title')),
+        visibleGroups.length === 0 ? null : h('span', { 'data-dsh-tide-grid-hint': '' }, t('model.providers', { count: visibleGroups.length }))
       ),
-      h('div', { 'data-dsh-simplify-grid-columns': '' }, columns))
+      h('div', { 'data-dsh-tide-grid-columns': '' }, columns))
     }
 
     // 思考等级滑块：标题行给出当前档位，轨道带填充进度，刻度文字标出全部档位。
@@ -219,33 +219,33 @@ export function createModelControl(props: ModelControlProps) {
       const levels = effortLevels(meta, t('effort.providerDefault'))
       if (levels.length === 0) {
         popupNode = h('div', {
-          'data-dsh-simplify-popup': '',
-          'data-dsh-simplify-portal-root': '',
+          'data-dsh-tide-popup': '',
+          'data-dsh-tide-portal-root': '',
           ref: (el: HTMLElement | null) => { popupRef.current = el },
           style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
-        }, h('div', { 'data-dsh-simplify-note': '' }, t('effort.unavailable')))
+        }, h('div', { 'data-dsh-tide-note': '' }, t('effort.unavailable')))
       } else {
         const currentId = draftEffort === null ? selection?.reasoningEffort ?? meta?.defaultEffort : draftEffort || undefined
         const draftIndex = draftEffort === null ? -1 : levels.findIndex((level) => (level.id ?? '') === draftEffort)
         const index = draftIndex >= 0 ? draftIndex : Math.max(0, levels.findIndex((level) => level.id === currentId))
         const fill = levels.length > 1 ? (index / (levels.length - 1)) * 100 : 100
         popupNode = h('div', {
-          'data-dsh-simplify-popup': '',
-          'data-dsh-simplify-portal-root': '',
-          'data-dsh-simplify-effort': '',
+          'data-dsh-tide-popup': '',
+          'data-dsh-tide-portal-root': '',
+          'data-dsh-tide-effort': '',
           ref: (el: HTMLElement | null) => { popupRef.current = el },
           style: pos === null ? { visibility: 'hidden' } : { left: pos.left, top: pos.top }
         },
-        h('div', { 'data-dsh-simplify-effort-head': '' },
-          h('span', { 'data-dsh-simplify-effort-title': '' }, t('effort.title')),
-          h('span', { 'data-dsh-simplify-effort-value': '' }, levels[index]?.name ?? '')
+        h('div', { 'data-dsh-tide-effort-head': '' },
+          h('span', { 'data-dsh-tide-effort-title': '' }, t('effort.title')),
+          h('span', { 'data-dsh-tide-effort-value': '' }, levels[index]?.name ?? '')
         ),
-        h('div', { 'data-dsh-simplify-effort-rail': '', style: { '--dsh-simplify-fill': `${fill}%` } },
+        h('div', { 'data-dsh-tide-effort-rail': '', style: { '--dsh-tide-fill': `${fill}%` } },
           h('input', {
             type: 'range',
             'aria-label': t('effort.title'),
             'aria-valuetext': levels[index]?.name,
-            'data-dsh-simplify-effort-slider': '',
+            'data-dsh-tide-effort-slider': '',
             min: 0,
             max: levels.length - 1,
             step: 1,
@@ -267,7 +267,7 @@ export function createModelControl(props: ModelControlProps) {
             }
           })
         ),
-        h('div', { 'data-dsh-simplify-effort-scale': '' }, levels.map((level, levelIndex) => {
+        h('div', { 'data-dsh-tide-effort-scale': '' }, levels.map((level, levelIndex) => {
           const ratio = levels.length > 1 ? levelIndex / (levels.length - 1) : 0
           return h('span', {
             key: level.id ?? 'provider-default',
@@ -284,7 +284,7 @@ export function createModelControl(props: ModelControlProps) {
       ? createPortal(popupNode, document.body)
       : popupNode
 
-    return h('div', { 'data-dsh-simplify-dock-root': '' }, ...children, popupPortal)
+    return h('div', { 'data-dsh-tide-dock-root': '' }, ...children, popupPortal)
   }
 }
 

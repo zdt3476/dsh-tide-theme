@@ -147,7 +147,7 @@ describe('client entry', () => {
   })
 
   it('声明插件身份并剔除 remote.settings / settings 无用依赖', () => {
-    expect(name).toBe('dsh-simplify-theme')
+    expect(name).toBe('dsh-tide-theme')
     // 必需的服务
     for (const service of ['slots', 'locale', 'modelDirectories', 'remote', 'remote.permissionPresets', 'sessions', 'workspaces', 'theme']) {
       expect(inject).toContain(service)
@@ -161,7 +161,7 @@ describe('client entry', () => {
     const { ctx, localeRegister } = makeCtx()
     apply(ctx)
 
-    expect(localeRegister).toHaveBeenCalledWith('dsh-simplify-theme', expect.objectContaining({
+    expect(localeRegister).toHaveBeenCalledWith('dsh-tide-theme', expect.objectContaining({
       zh: expect.objectContaining({
         'delegation.state.running': '运行中',
         'delegation.state.done': '已完成',
@@ -192,9 +192,9 @@ describe('client entry', () => {
     }
 
     // 初始状态下（默认 themeOverrides 为 true）：
-    // - body 带有 data-dsh-simplify-theme
+    // - body 带有 data-dsh-tide-theme
     // - overrideTokens 被调用一次
-    expect(document.body.hasAttribute('data-dsh-simplify-theme')).toBe(true)
+    expect(document.body.hasAttribute('data-dsh-tide-theme')).toBe(true)
     expect(overrideTokens).toHaveBeenCalledTimes(1)
     expect(overrideTokens).toHaveBeenCalledWith(THEME_SOURCE, SIMPLIFY_TOKENS)
     expect(disposerFn).not.toHaveBeenCalled()
@@ -204,18 +204,18 @@ describe('client entry', () => {
 
     // 关闭后：
     // - 旧的 token override disposer 必须被调用
-    // - body 上的 data-dsh-simplify-theme 必须被移除
+    // - body 上的 data-dsh-tide-theme 必须被移除
     expect(disposerFn).toHaveBeenCalledTimes(1)
-    expect(document.body.hasAttribute('data-dsh-simplify-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-dsh-tide-theme')).toBe(false)
 
     // 3. 再次触发配置事件重新开启主题覆盖：saveSimplifyConfig({ themeOverrides: true })
     saveSimplifyConfig({ themeOverrides: true })
 
     // 重新开启后：
     // - overrideTokens 再次被调用
-    // - body 重新具有 data-dsh-simplify-theme 属性
+    // - body 重新具有 data-dsh-tide-theme 属性
     expect(overrideTokens).toHaveBeenCalledTimes(2)
-    expect(document.body.hasAttribute('data-dsh-simplify-theme')).toBe(true)
+    expect(document.body.hasAttribute('data-dsh-tide-theme')).toBe(true)
 
     // 4. 插件卸载（执行 effect cleanups）
     for (const cleanup of cleanups) {
@@ -224,43 +224,43 @@ describe('client entry', () => {
 
     // 卸载后：
     // - disposer 再次被调用
-    // - body 上的 data-dsh-simplify-theme 彻底移除
+    // - body 上的 data-dsh-tide-theme 彻底移除
     expect(disposerFn).toHaveBeenCalledTimes(2)
-    expect(document.body.hasAttribute('data-dsh-simplify-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-dsh-tide-theme')).toBe(false)
   })
 
-  it('UI_CSS 契约：所有全局皮肤必须受 body[data-dsh-simplify-theme] 约束，关掉 token 后无残留', () => {
+  it('UI_CSS 契约：所有全局皮肤必须受 body[data-dsh-tide-theme] 约束，关掉 token 后无残留', () => {
     // 检查全局选择器（hover, card, scrollbar, selection 等）
     // 1. 验证不存在脱离 gate 的 ::-webkit-scrollbar 或 ::selection 裸规则
     const scrollbarMatches = [...UI_CSS.matchAll(/(^|\n)\s*(::-webkit-scrollbar[^{]*)\{/g)].map(m => m[2].trim())
     for (const sel of scrollbarMatches) {
-      expect(sel).toContain('body[data-dsh-simplify-theme]')
+      expect(sel).toContain('body[data-dsh-tide-theme]')
     }
 
     const selectionMatches = [...UI_CSS.matchAll(/(^|\n)\s*(::selection[^{]*)\{/g)].map(m => m[2].trim())
     for (const sel of selectionMatches) {
-      expect(sel).toContain('body[data-dsh-simplify-theme]')
+      expect(sel).toContain('body[data-dsh-tide-theme]')
     }
 
     // 2. 验证全局 hover / card 选择器不残留
     const globalHoverMatches = [...UI_CSS.matchAll(/(^|\n)\s*(\[data-row-key\]:hover[^{]*)\{/g)].map(m => m[2].trim())
     for (const sel of globalHoverMatches) {
-      expect(sel).toContain('body[data-dsh-simplify-theme]')
+      expect(sel).toContain('body[data-dsh-tide-theme]')
     }
 
     const globalCardMatches = [...UI_CSS.matchAll(/(^|\n)\s*(\[data-composer-card\][^{]*)\{/g)].map(m => m[2].trim())
     for (const sel of globalCardMatches) {
-      expect(sel).toContain('body[data-dsh-simplify-theme]')
+      expect(sel).toContain('body[data-dsh-tide-theme]')
     }
 
     // 3. 验证全局基色只来自现有 token 变量，不写第二套硬编码 #0b1420 覆盖
-    expect(UI_CSS).not.toMatch(/body\[data-dsh-simplify-theme\][^{]*\{\s*background-color:\s*#0b1420/i)
+    expect(UI_CSS).not.toMatch(/body\[data-dsh-tide-theme\][^{]*\{\s*background-color:\s*#0b1420/i)
   })
 
   it('UI_CSS 契约：真实 header 必须是 header 标签而非 div，且有精准结构约束', () => {
     // 确认顶栏真实选择器使用 header 且包含 data-conversation-header-leading / corner
-    expect(UI_CSS).toMatch(/body\[data-dsh-simplify-theme\][^\n]*header[class\*='_header'][^\n]*data-conversation-header-leading/)
-    expect(UI_CSS).toMatch(/body\[data-dsh-simplify-theme\][^\n]*header[class\*='_header'][^\n]*data-conversation-header-corner/)
+    expect(UI_CSS).toMatch(/body\[data-dsh-tide-theme\][^\n]*header[class\*='_header'][^\n]*data-conversation-header-leading/)
+    expect(UI_CSS).toMatch(/body\[data-dsh-tide-theme\][^\n]*header[class\*='_header'][^\n]*data-conversation-header-corner/)
   })
 
   it('UI_CSS 契约：mixed / unknown / failed / denied 拥有明确语义颜色，绝不全绿', () => {
@@ -282,13 +282,13 @@ describe('client entry', () => {
 
   it('UI_CSS 契约：HUD 单行内联胶囊条、DSH token 材质、读数与标签同排', () => {
     // 单行流式排布（对齐宿主 TodoPanel 形制），不再是五列均摊仪表盘
-    expect(UI_CSS).toMatch(/\.dsh-simplify-dock-stats-trigger\s*\{[^}]*display:\s*flex;/)
-    expect(UI_CSS).toMatch(/\.dsh-simplify-dock-stats-trigger\s*\{[^}]*min-height:\s*36px;/)
+    expect(UI_CSS).toMatch(/\.dsh-tide-dock-stats-trigger\s*\{[^}]*display:\s*flex;/)
+    expect(UI_CSS).toMatch(/\.dsh-tide-dock-stats-trigger\s*\{[^}]*min-height:\s*36px;/)
     // 材质完全消费 DSH 原生 token
-    expect(UI_CSS).toMatch(/\.dsh-simplify-dock-stats-trigger\s*\{[^}]*background:\s*var\(--dsw-specific-menu\);/)
-    expect(UI_CSS).toMatch(/\.dsh-simplify-dock-stats-trigger\s*\{[^}]*box-shadow:\s*var\(--dsw-elevation-panel\);/)
+    expect(UI_CSS).toMatch(/\.dsh-tide-dock-stats-trigger\s*\{[^}]*background:\s*var\(--dsw-specific-menu\);/)
+    expect(UI_CSS).toMatch(/\.dsh-tide-dock-stats-trigger\s*\{[^}]*box-shadow:\s*var\(--dsw-elevation-panel\);/)
     // 读数与标签同为 13px（DSH TodoPanel 标题规格），不再是大号仪表数字
-    expect(UI_CSS).toMatch(/\.dsh-simplify-hud-number\s*\{[^}]*font-size:\s*var\(--dsw-font-xs-13-font-size,\s*13px\)/)
+    expect(UI_CSS).toMatch(/\.dsh-tide-hud-number\s*\{[^}]*font-size:\s*var\(--dsw-font-xs-13-font-size,\s*13px\)/)
     // 字体必须走 DSH 的 token 体系，且每个 token 都带字面回退值：
     // font 简写在 token 缺失时会整体失效，字号会静默退回 16px。
     const fontShorthand = UI_CSS.match(/[^{}]*\{[^{}]*font:\s*var\(--dsw-font-[^{}]*\}/g) ?? []
@@ -297,6 +297,6 @@ describe('client entry', () => {
     // 排版统一到 DSH 字体族（Inter 优先）。
     expect(UI_CSS).toMatch(/font-family:\s*Inter,\s*var\(--dsw-font-family\)/)
     // 耗时列必须与四列同构（内联 flex + 有标签），不能退回绝对定位脚注。
-    expect(UI_CSS).not.toMatch(/\.dsh-simplify-stat-item\.is-duration\s*\{[^}]*position:\s*absolute;/)
+    expect(UI_CSS).not.toMatch(/\.dsh-tide-stat-item\.is-duration\s*\{[^}]*position:\s*absolute;/)
   })
 })

@@ -3,8 +3,8 @@
  *
  * DSH 没有工作区级的 pin，也没有「只显示前 N 个工作区」的开关，所以全部在
  * DOM 层做（与 tabs/筛选同一套注入策略）：
- *   - 折叠：给超出 N 的组打 `data-dsh-simplify-collapsed`，样式表负责隐藏；
- *   - 置顶：给组打 `data-dsh-simplify-pinned`，列表容器改 flex column 后用 order 提前；
+ *   - 折叠：给超出 N 的组打 `data-dsh-tide-collapsed`，样式表负责隐藏；
+ *   - 置顶：给组打 `data-dsh-tide-pinned`，列表容器改 flex column 后用 order 提前；
  *   - 徽标：把会话数写进工作区行的属性，样式表用 ::after + attr() 渲染。
  * 原生拖拽/动画继续按自己的节点工作，我们只改属性与顺序，不动 DOM 结构。
  */
@@ -14,8 +14,8 @@ import { orderWorkspaceGroups, workspaceActivity } from './sidebar-activity'
 import type { ActivityStore, SessionActivitySnapshot, WorkspaceActivitySnapshot } from './sidebar-activity'
 import { loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
 
-export const PINNED_KEY = 'dsh-simplify-theme.pinned-workspaces'
-export const EXPANDED_KEY = 'dsh-simplify-theme.workspaces-expanded'
+export const PINNED_KEY = 'dsh-tide-theme.pinned-workspaces'
+export const EXPANDED_KEY = 'dsh-tide-theme.workspaces-expanded'
 export const COLLAPSED_LIMIT = 5
 
 export interface GroupInfo {
@@ -119,23 +119,23 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
 
   const header = slot.querySelector('button[aria-label*="搜索"], button[aria-label*="Search"]')?.parentElement?.parentElement?.parentElement ?? null
   const controls = options.createElement('div')
-  controls.dataset.dshSimplifyGroupsControls = ''
+  controls.dataset.dshTideGroupsControls = ''
   if (header !== null) header.appendChild(controls)
 
   const toggle = options.createElement('button') as HTMLButtonElement
   toggle.type = 'button'
-  toggle.dataset.dshSimplifyGroupsToggle = ''
+  toggle.dataset.dshTideGroupsToggle = ''
   controls.appendChild(toggle)
 
   // 侧栏独立小节分区分组（方案 A：Linear / Slack / Notion 风格）
   const pinnedHeader = options.createElement('div')
-  pinnedHeader.className = 'dsh-simplify-sidebar-section is-pinned'
-  pinnedHeader.dataset.dshSimplifySection = 'pinned'
+  pinnedHeader.className = 'dsh-tide-sidebar-section is-pinned'
+  pinnedHeader.dataset.dshTideSection = 'pinned'
   pinnedHeader.hidden = true
 
   const unpinnedHeader = options.createElement('div')
-  unpinnedHeader.className = 'dsh-simplify-sidebar-section is-unpinned'
-  unpinnedHeader.dataset.dshSimplifySection = 'unpinned'
+  unpinnedHeader.className = 'dsh-tide-sidebar-section is-unpinned'
+  unpinnedHeader.dataset.dshTideSection = 'unpinned'
   unpinnedHeader.hidden = true
 
   const persistPinned = () => localStorage.setItem(PINNED_KEY, JSON.stringify([...pinned]))
@@ -160,7 +160,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
   const handleMenuCheck = () => {
     const menus = document.querySelectorAll('[role="menu"]')
     for (const menu of menus) {
-      if (menu.querySelector('[data-dsh-simplify-workspace-pin]') !== null) continue
+      if (menu.querySelector('[data-dsh-tide-workspace-pin]') !== null) continue
       const items = [...menu.querySelectorAll('[role="menuitem"]')]
       const isWorkspaceMenu = items.some((it) => it.textContent?.includes('重命名') || it.textContent?.includes('Rename'))
         && items.some((it) => it.textContent?.includes('删除工作区') || it.textContent?.includes('Delete workspace'))
@@ -177,7 +177,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       pinItem.type = 'button'
       pinItem.className = templateItem ? templateItem.className : ''
       pinItem.setAttribute('role', 'menuitem')
-      pinItem.dataset.dshSimplifyWorkspacePin = wsId
+      pinItem.dataset.dshTideWorkspacePin = wsId
 
       const starPath = isPinned
         ? 'M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.441.062-.612.636-.283.95l3.523 3.356-.83 4.73zm4.905-2.767-3.686 1.894.694-3.957a.56.56 0 0 0-.163-.505L1.71 6.745l4.052-.576a.53.53 0 0 0 .393-.288L8 2.223l1.846 3.658a.53.53 0 0 0 .393.288l4.052.575-2.906 2.77a.56.56 0 0 0-.163.506l.694 3.957-3.686-1.895a.5.5 0 0 0-.461 0z'
@@ -219,11 +219,11 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       pinnedHeader.hidden = true
       unpinnedHeader.hidden = true
       for (const group of groups) {
-        group.element.removeAttribute('data-dsh-simplify-group')
-        group.element.removeAttribute('data-dsh-simplify-pinned')
-        group.element.removeAttribute('data-dsh-simplify-collapsed')
-        group.element.removeAttribute('data-dsh-simplify-pinned-tail')
-        group.row.removeAttribute('data-dsh-simplify-count')
+        group.element.removeAttribute('data-dsh-tide-group')
+        group.element.removeAttribute('data-dsh-tide-pinned')
+        group.element.removeAttribute('data-dsh-tide-collapsed')
+        group.element.removeAttribute('data-dsh-tide-pinned-tail')
+        group.row.removeAttribute('data-dsh-tide-count')
         group.row.removeAttribute('title')
         const prevOrder = originalOrders.get(group.element)
         if (prevOrder !== undefined) group.element.style.order = prevOrder
@@ -237,10 +237,10 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
     const collapse = archived === 'default' && !expanded
 
     for (const group of groups) {
-      group.element.setAttribute('data-dsh-simplify-group', group.id)
-      group.element.toggleAttribute('data-dsh-simplify-pinned', pinned.has(group.id))
+      group.element.setAttribute('data-dsh-tide-group', group.id)
+      group.element.toggleAttribute('data-dsh-tide-pinned', pinned.has(group.id))
       const count = group.element.querySelectorAll(SESSION_ROW).length
-      group.row.setAttribute('data-dsh-simplify-count', String(count))
+      group.row.setAttribute('data-dsh-tide-count', String(count))
       group.row.setAttribute('title', `当前列表可见 ${count} 个会话`)
     }
 
@@ -263,16 +263,16 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       pinnedHeader.hidden = false
       pinnedHeader.style.order = String(-ranked.length * 2 - 2)
       pinnedHeader.innerHTML = `
-        <span class="dsh-simplify-section-title"><span class="dsh-simplify-section-icon" aria-hidden="true">📌</span>${options.locale('groups.pinnedTitle')}</span>
-        <span class="dsh-simplify-section-badge">${pinnedCount}</span>
+        <span class="dsh-tide-section-title"><span class="dsh-tide-section-icon" aria-hidden="true">📌</span>${options.locale('groups.pinnedTitle')}</span>
+        <span class="dsh-tide-section-badge">${pinnedCount}</span>
       `
 
       if (unpinnedCount > 0) {
         unpinnedHeader.hidden = false
         unpinnedHeader.style.order = String((pinnedCount - ranked.length) * 2 - 1)
         unpinnedHeader.innerHTML = `
-          <span class="dsh-simplify-section-title">${options.locale('groups.unpinnedTitle')}</span>
-          <span class="dsh-simplify-section-badge">${unpinnedCount}</span>
+          <span class="dsh-tide-section-title">${options.locale('groups.unpinnedTitle')}</span>
+          <span class="dsh-tide-section-badge">${unpinnedCount}</span>
         `
       } else {
         unpinnedHeader.hidden = true
@@ -285,9 +285,9 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
     for (const [index, group] of ranked.entries()) {
       if (!originalOrders.has(group.element)) originalOrders.set(group.element, group.element.style.order)
       group.element.style.order = String((index - ranked.length) * 2)
-      group.element.toggleAttribute('data-dsh-simplify-collapsed', collapse && !visible.has(group.id))
+      group.element.toggleAttribute('data-dsh-tide-collapsed', collapse && !visible.has(group.id))
       const isPinned = pinnedGroupIds.has(group.id)
-      group.element.toggleAttribute('data-dsh-simplify-pinned', isPinned)
+      group.element.toggleAttribute('data-dsh-tide-pinned', isPinned)
     }
 
     const hidden = hiddenCount(ranked, config.sidebarUnpinnedLimit, config.sidebarPinnedLimit)
@@ -304,7 +304,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       try {
         apply()
       } catch (error) {
-        console.error('[dsh-simplify-theme] sidebar groups failed:', error)
+        console.error('[dsh-tide-theme] sidebar groups failed:', error)
       }
     })
   }
@@ -335,10 +335,10 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       for (const group of collectGroups(slot)) {
         const order = originalOrders.get(group.element)
         if (order !== undefined) group.element.style.order = order
-        group.element.removeAttribute('data-dsh-simplify-group')
-        group.element.removeAttribute('data-dsh-simplify-pinned')
-        group.element.removeAttribute('data-dsh-simplify-collapsed')
-        group.row.removeAttribute('data-dsh-simplify-count')
+        group.element.removeAttribute('data-dsh-tide-group')
+        group.element.removeAttribute('data-dsh-tide-pinned')
+        group.element.removeAttribute('data-dsh-tide-collapsed')
+        group.row.removeAttribute('data-dsh-tide-count')
       }
       controls.remove()
       pinnedHeader.remove()

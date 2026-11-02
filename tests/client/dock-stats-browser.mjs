@@ -91,10 +91,10 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
     mount.innerHTML = `
       <div data-composer-seat>
         <div data-composer-dock>
-          <div data-dsh-simplify-dock>
-            <div data-dsh-simplify-dock-left><button id="btn-model">GPT-5</button></div>
+          <div data-dsh-tide-dock>
+            <div data-dsh-tide-dock-left><button id="btn-model">GPT-5</button></div>
             <div id="stats-mount"></div>
-            <div data-dsh-simplify-dock-right><button id="btn-perm">只读</button></div>
+            <div data-dsh-tide-dock-right><button id="btn-perm">只读</button></div>
           </div>
           <!-- 原生应被隐藏的状态胶囊 -->
           <span data-composer-stat="activity"><button>4 轮 · 204 token/秒</button></span>
@@ -103,7 +103,7 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
         </div>
       </div>
       <!-- 最后一轮耗时标记 -->
-      <div data-turn-tail><div data-clock="end"><span data-dsh-simplify-duration>4.2 秒</span></div></div>
+      <div data-turn-tail><div data-clock="end"><span data-dsh-tide-duration>4.2 秒</span></div></div>
     `
 
     // 会话投影模拟数据
@@ -157,9 +157,9 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
   })
 
   // 2. 平铺状态栏正确渲染并且内容准确充足（包含轮步、容量、真实TPS、缓存命中、单轮耗时）
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
   await page.screenshot({ path: '/tmp/dock-stats-flat.png' })
-  const trigger = page.locator('.dsh-simplify-dock-stats-trigger')
+  const trigger = page.locator('.dsh-tide-dock-stats-trigger')
   // 玻璃托盘的字号随视觉重构调过，这里只断言「可读且未退化为注释级小字」，不锁死具体像素；
   // 精确比例（读数 16px / 标签 11px / 轨道 3px）由 entry.spec 的 UI_CSS 契约守护。
   const triggerFontSize = Number.parseFloat(await trigger.evaluate(el => getComputedStyle(el).fontSize))
@@ -167,64 +167,64 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
   // 托盘必须是有描边的玻璃表面，而不是原来的透明底。
   assert.notEqual(await trigger.evaluate(el => getComputedStyle(el).borderTopColor), 'rgba(0, 0, 0, 0)')
 
-  const activityText = await page.locator('.dsh-simplify-stat-item.is-activity .dsh-simplify-hud-val').textContent()
-  const contextText = await page.locator('.dsh-simplify-stat-item.is-context .dsh-simplify-hud-val').textContent()
-  const tpsText = await page.locator('.dsh-simplify-stat-item.is-tps .dsh-simplify-hud-val').textContent()
-  const cacheText = await page.locator('.dsh-simplify-stat-item.is-cache .dsh-simplify-hud-val').textContent()
-  const durationText = await page.locator('.dsh-simplify-stat-item.is-duration .dsh-simplify-stat-item-main').textContent()
+  const activityText = await page.locator('.dsh-tide-stat-item.is-activity .dsh-tide-hud-val').textContent()
+  const contextText = await page.locator('.dsh-tide-stat-item.is-context .dsh-tide-hud-val').textContent()
+  const tpsText = await page.locator('.dsh-tide-stat-item.is-tps .dsh-tide-hud-val').textContent()
+  const cacheText = await page.locator('.dsh-tide-stat-item.is-cache .dsh-tide-hud-val').textContent()
+  const durationText = await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-item-main').textContent()
 
   assert.equal(activityText, '9 轮 · 126 步')
   assert.equal(contextText, '121k / 500k (24%)')
   // 验证上下文颜色提示（<=50% 呈现 good 绿色）
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-context').getAttribute('data-dsh-simplify-pct'), 'good')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-context').getAttribute('data-dsh-tide-pct'), 'good')
   // 验证真实 TPS（包含首字延迟，而非虚高的 204）
   assert.equal(tpsText, '27.2 t/s')
   // 验证 TPS 标签写“平均 TPS”
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-tps .dsh-simplify-stat-label-text').textContent(), '平均 TPS')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-tps .dsh-tide-stat-label-text').textContent(), '平均 TPS')
   // 验证缓存命中率（percent-only 同步旧断言）
   assert.equal(cacheText, '99%')
   // 验证单轮耗时（有本轮来源标“本轮耗时”）
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-duration .dsh-simplify-stat-label-text').textContent(), '本轮耗时')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-label-text').textContent(), '本轮耗时')
   assert.equal(durationText, '4.2 秒')
 
   // 3. 点击平铺栏展开结构化看板浮层（Popover）
-  assert.equal(await page.locator('[data-dsh-simplify-stats-popover]').count(), 0)
+  assert.equal(await page.locator('[data-dsh-tide-stats-popover]').count(), 0)
   await trigger.click()
-  await page.waitForSelector('[data-dsh-simplify-stats-popover][style*="left"]')
+  await page.waitForSelector('[data-dsh-tide-stats-popover][style*="left"]')
   await page.waitForTimeout(100)
-  const popover = page.locator('[data-dsh-simplify-stats-popover]')
+  const popover = page.locator('[data-dsh-tide-stats-popover]')
   await page.screenshot({ path: '/tmp/dock-stats-popover.png' })
 
   // 验证 portal 真实挂载在 document.body 上（而非受限在 card 内部）
-  assert.equal(await page.evaluate(() => document.querySelector('[data-dsh-simplify-stats-popover]')?.parentElement === document.body), true)
+  assert.equal(await page.evaluate(() => document.querySelector('[data-dsh-tide-stats-popover]')?.parentElement === document.body), true)
 
   // 验证点击浮层内部不会误触发关闭
-  await popover.locator('.dsh-simplify-stats-popover-title').click()
+  await popover.locator('.dsh-tide-stats-popover-title').click()
   await page.waitForTimeout(50)
-  assert.equal(await page.locator('[data-dsh-simplify-stats-popover]').count(), 1)
+  assert.equal(await page.locator('[data-dsh-tide-stats-popover]').count(), 1)
 
   // 检查看板内容：标题、已用徽标、进度条、平均TPS卡片、Token明细与耗时
-  assert.equal(await popover.locator('.dsh-simplify-stats-popover-title').textContent(), '会话用量与性能看板')
-  assert.equal(await popover.locator('.dsh-simplify-stats-popover-badge').textContent(), '24% 已用')
-  assert.equal(await popover.locator('.dsh-simplify-stats-progress-header strong').textContent(), '121k / 500k')
-  assert.match(await popover.locator('.dsh-simplify-stats-card').first().textContent(), /平均 TPS/)
-  assert.match(await popover.locator('.dsh-simplify-stats-card').first().textContent(), /27\.2 t\/s/)
+  assert.equal(await popover.locator('.dsh-tide-stats-popover-title').textContent(), '会话用量与性能看板')
+  assert.equal(await popover.locator('.dsh-tide-stats-popover-badge').textContent(), '24% 已用')
+  assert.equal(await popover.locator('.dsh-tide-stats-progress-header strong').textContent(), '121k / 500k')
+  assert.match(await popover.locator('.dsh-tide-stats-card').first().textContent(), /平均 TPS/)
+  assert.match(await popover.locator('.dsh-tide-stats-card').first().textContent(), /27\.2 t\/s/)
 
   // 检查明细数据
-  const detailText = await popover.locator('.dsh-simplify-stats-detail-list').textContent()
+  const detailText = await popover.locator('.dsh-tide-stats-detail-list').textContent()
   assert.match(detailText, /未缓存输入 Tokens133,284/)
   assert.match(detailText, /缓存读取 Tokens \(Cache Read\)23,333,115/)
   assert.match(detailText, /累计消耗总 Tokens24,083,430/)
 
   // 检查会话活动与模型耗时拆解
-  const footerText = await popover.locator('.dsh-simplify-stats-footer').textContent()
+  const footerText = await popover.locator('.dsh-tide-stats-footer').textContent()
   assert.match(footerText, /9 轮 · 126 步/)
   assert.match(footerText, /模型总耗时/)
   assert.match(footerText, /工具耗时/)
 
   // 4. 按 Escape 关闭看板浮层
   await page.keyboard.press('Escape')
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-stats-popover]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-stats-popover]') === null)
 })
 
 test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUsage）完整渲染', async (t) => {
@@ -273,10 +273,10 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
     mount.innerHTML = `
       <div data-composer-seat>
         <div data-composer-dock>
-          <div data-dsh-simplify-dock>
-            <div data-dsh-simplify-dock-left><button id="btn-model">DeepSeek-V3</button></div>
+          <div data-dsh-tide-dock>
+            <div data-dsh-tide-dock-left><button id="btn-model">DeepSeek-V3</button></div>
             <div id="stats-mount"></div>
-            <div data-dsh-simplify-dock-right><button id="btn-perm">只读</button></div>
+            <div data-dsh-tide-dock-right><button id="btn-perm">只读</button></div>
           </div>
         </div>
       </div>
@@ -319,34 +319,34 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
     }))
   })
 
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
-  const trigger = page.locator('.dsh-simplify-dock-stats-trigger')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
+  const trigger = page.locator('.dsh-tide-dock-stats-trigger')
 
   // 1. 验证平铺栏各项数据充足完整
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-activity .dsh-simplify-hud-val').textContent(), '85 轮 · 1979 步')
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-context .dsh-simplify-hud-val').textContent(), '574k / 1M (55%)')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-activity .dsh-tide-hud-val').textContent(), '85 轮 · 1979 步')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-context .dsh-tide-hud-val').textContent(), '574k / 1M (55%)')
   // 验证上下文颜色提示（55% 呈 warn 橙黄色提醒）
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-context').getAttribute('data-dsh-simplify-pct'), 'warn')
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-tps .dsh-simplify-hud-val').textContent(), '17.1 t/s')
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-tps .dsh-simplify-stat-label-text').textContent(), '平均 TPS')
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-cache .dsh-simplify-hud-val').textContent(), '97%')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-context').getAttribute('data-dsh-tide-pct'), 'warn')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-tps .dsh-tide-hud-val').textContent(), '17.1 t/s')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-tps .dsh-tide-stat-label-text').textContent(), '平均 TPS')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-cache .dsh-tide-hud-val').textContent(), '97%')
   // 无可靠本轮来源时，回退累计耗时明确标记为“模型累计”而非“本轮耗时”
-  assert.equal(await page.locator('.dsh-simplify-stat-item.is-duration .dsh-simplify-stat-label-text').textContent(), '模型累计')
-  assert.match(await page.locator('.dsh-simplify-stat-item.is-duration .dsh-simplify-stat-item-main').textContent(), /14 小时 56 分/)
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-label-text').textContent(), '模型累计')
+  assert.match(await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-item-main').textContent(), /14 小时 56 分/)
 
   // 2. 点击展开看板浮层
   await trigger.click()
-  await page.waitForSelector('[data-dsh-simplify-stats-popover][style*="left"]')
+  await page.waitForSelector('[data-dsh-tide-stats-popover][style*="left"]')
   await page.screenshot({ path: '/tmp/dock-stats-user-session.png' })
-  const popover = page.locator('[data-dsh-simplify-stats-popover]')
+  const popover = page.locator('[data-dsh-tide-stats-popover]')
 
   // 检查看板内容
-  assert.equal(await popover.locator('.dsh-simplify-stats-popover-title').textContent(), '会话用量与性能看板')
-  assert.equal(await popover.locator('.dsh-simplify-stats-popover-badge').textContent(), '55% 已用')
-  assert.equal(await popover.locator('.dsh-simplify-stats-progress-header strong').textContent(), '574k / 1M')
+  assert.equal(await popover.locator('.dsh-tide-stats-popover-title').textContent(), '会话用量与性能看板')
+  assert.equal(await popover.locator('.dsh-tide-stats-popover-badge').textContent(), '55% 已用')
+  assert.equal(await popover.locator('.dsh-tide-stats-progress-header strong').textContent(), '574k / 1M')
 
   // 检查 4 个卡片均完整渲染
-  const cards = popover.locator('.dsh-simplify-stats-card')
+  const cards = popover.locator('.dsh-tide-stats-card')
   assert.equal(await cards.count(), 4)
   assert.match(await cards.nth(0).textContent(), /17\.1 t\/s/)
   assert.match(await cards.nth(1).textContent(), /97%/)
@@ -354,7 +354,7 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
   assert.match(await cards.nth(3).textContent(), /14 小时 56 分/)
 
   // 检查 Token 详细构成完整展示
-  const detailText = await popover.locator('.dsh-simplify-stats-detail-list').textContent()
+  const detailText = await popover.locator('.dsh-tide-stats-detail-list').textContent()
   assert.match(detailText, /未缓存输入 Tokens15,425,147/)
   assert.match(detailText, /缓存读取 Tokens \(Cache Read\)559,962,931/)
   assert.match(detailText, /缓存写入 Tokens \(Cache Write\)1,482,880/)
@@ -362,7 +362,7 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
   assert.match(detailText, /累计消耗总 Tokens577,788,759/)
 
   // 检查脚注
-  const footerText = await popover.locator('.dsh-simplify-stats-footer').textContent()
+  const footerText = await popover.locator('.dsh-tide-stats-footer').textContent()
   assert.match(footerText, /85 轮 · 1979 步/)
   assert.match(footerText, /模型总耗时 14 小时 56 分/)
   assert.match(footerText, /工具耗时 1 小时 32 分/)
@@ -404,10 +404,10 @@ test('执行上下文压缩后，通过 projectedTokens 立即刷新平铺栏和
     mount.innerHTML = `
       <div data-composer-seat>
         <div data-composer-dock>
-          <div data-dsh-simplify-dock>
-            <div data-dsh-simplify-dock-left><button id="btn-model">DeepSeek-V3</button></div>
+          <div data-dsh-tide-dock>
+            <div data-dsh-tide-dock-left><button id="btn-model">DeepSeek-V3</button></div>
             <div id="stats-mount"></div>
-            <div data-dsh-simplify-dock-right><button id="btn-perm">只读</button></div>
+            <div data-dsh-tide-dock-right><button id="btn-perm">只读</button></div>
           </div>
         </div>
       </div>
@@ -437,8 +437,8 @@ test('执行上下文压缩后，通过 projectedTokens 立即刷新平铺栏和
     window.renderStats(window.mockProjections)
   })
 
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
-  const contextValue = page.locator('.dsh-simplify-stat-item.is-context .dsh-simplify-hud-val')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
+  const contextValue = page.locator('.dsh-tide-stat-item.is-context .dsh-tide-hud-val')
   assert.equal(await contextValue.textContent(), '121k / 500k (24%)')
 
   // 模拟上下文压缩发生：宿主裁剪消息后，通过 projectedTokens 立即将活跃表面缩减到 25k
@@ -455,18 +455,18 @@ test('执行上下文压缩后，通过 projectedTokens 立即刷新平铺栏和
   })
 
   // 验证底部平铺栏立刻刷新
-  await page.waitForFunction(() => document.querySelector('.dsh-simplify-stat-item.is-context .dsh-simplify-hud-val')?.textContent === '25k / 500k (5%)')
+  await page.waitForFunction(() => document.querySelector('.dsh-tide-stat-item.is-context .dsh-tide-hud-val')?.textContent === '25k / 500k (5%)')
   assert.equal(await contextValue.textContent(), '25k / 500k (5%)')
 
   // 点击展开弹层验证内部数值也已更新
-  const trigger = page.locator('.dsh-simplify-dock-stats-trigger')
+  const trigger = page.locator('.dsh-tide-dock-stats-trigger')
   await trigger.click()
-  await page.waitForSelector('[data-dsh-simplify-stats-popover][style*="left"]')
-  const popover = page.locator('[data-dsh-simplify-stats-popover]')
+  await page.waitForSelector('[data-dsh-tide-stats-popover][style*="left"]')
+  const popover = page.locator('[data-dsh-tide-stats-popover]')
 
-  assert.equal(await popover.locator('.dsh-simplify-stats-popover-badge').textContent(), '5% 已用')
-  assert.equal(await popover.locator('.dsh-simplify-stats-progress-header strong').textContent(), '25k / 500k')
-  assert.match(await popover.locator('.dsh-simplify-stats-progress-footer').textContent(), /剩余空间: 475,000 tokens/)
+  assert.equal(await popover.locator('.dsh-tide-stats-popover-badge').textContent(), '5% 已用')
+  assert.equal(await popover.locator('.dsh-tide-stats-progress-header strong').textContent(), '25k / 500k')
+  assert.match(await popover.locator('.dsh-tide-stats-progress-footer').textContent(), /剩余空间: 475,000 tokens/)
 })
 
 test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层内部点击不误关', async (t) => {
@@ -498,7 +498,7 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
     mount.innerHTML = `
       <div data-composer-seat>
         <div data-composer-dock>
-          <div data-dsh-simplify-dock>
+          <div data-dsh-tide-dock>
             <div id="stats-mount"></div>
           </div>
         </div>
@@ -517,8 +517,8 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
     root.render(React.createElement(StatsComponent, { useProjection: (k) => projections[k] }))
   })
 
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
-  const trigger = page.locator('.dsh-simplify-dock-stats-trigger')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
+  const trigger = page.locator('.dsh-tide-dock-stats-trigger')
   assert.ok(await trigger.isVisible())
 
   // 1. 验证 390px 容器正常显示且宽度受控
@@ -527,11 +527,11 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
 
   // 展开浮层验证短视口（height: 420）下的 bounds
   await trigger.click()
-  await page.waitForSelector('[data-dsh-simplify-stats-popover][style*="left"]')
-  const popover = page.locator('[data-dsh-simplify-stats-popover]')
+  await page.waitForSelector('[data-dsh-tide-stats-popover][style*="left"]')
+  const popover = page.locator('[data-dsh-tide-stats-popover]')
 
   // 验证 portal 真实挂在 document.body
-  const isDirectBodyChild = await page.evaluate(() => document.querySelector('[data-dsh-simplify-stats-popover]')?.parentElement === document.body)
+  const isDirectBodyChild = await page.evaluate(() => document.querySelector('[data-dsh-tide-stats-popover]')?.parentElement === document.body)
   assert.equal(isDirectBodyChild, true)
 
   const popoverBox = await popover.boundingBox()
@@ -539,13 +539,13 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
   assert.ok(popoverBox.x >= 0, `popover left ${popoverBox.x} out of viewport`)
 
   // 验证浮层内部点击不误关
-  await popover.locator('.dsh-simplify-stats-popover-title').click()
+  await popover.locator('.dsh-tide-stats-popover-title').click()
   await page.waitForTimeout(50)
   assert.equal(await popover.count(), 1)
 
   // 外部点击成功关闭
   await page.mouse.click(5, 5)
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-stats-popover]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-stats-popover]') === null)
 
   // 2. 进一步缩小到 340px 极端小屏容器
   await page.evaluate(() => {
@@ -613,11 +613,11 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
   })
 
   // 1. 验证初始化时 DockControl 平铺正常挂载，并且 mountDockAlign 为 dock 注入了 card 宽度和 inset
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
   await page.waitForFunction(() => {
     const row = document.querySelector('[data-composer-dock]')
-    return row?.style.getPropertyValue('--dsh-simplify-card-width') === '600px' &&
-           row?.style.getPropertyValue('--dsh-simplify-dock-inset-x') === '14px'
+    return row?.style.getPropertyValue('--dsh-tide-card-width') === '600px' &&
+           row?.style.getPropertyValue('--dsh-tide-dock-inset-x') === '14px'
   })
 
   // 2. 真实调用配置保存开关，关闭 dockStats（禁止手动设属性代替真实开关）
@@ -627,11 +627,11 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
   })
 
   // 验证 DockControl 响应开关关闭返回 null，并且 mountDockAlign 自动清理了 row 上的 CSS 变量
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-dock-center]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-dock-center]') === null)
   await page.waitForFunction(() => {
     const row = document.querySelector('[data-composer-dock]')
-    return row?.style.getPropertyValue('--dsh-simplify-card-width') === '' &&
-           row?.style.getPropertyValue('--dsh-simplify-dock-inset-x') === ''
+    return row?.style.getPropertyValue('--dsh-tide-card-width') === '' &&
+           row?.style.getPropertyValue('--dsh-tide-dock-inset-x') === ''
   })
 
   // 3. 再次通过真实调用打开开关，验证恢复
@@ -639,10 +639,10 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
     const { saveSimplifyConfig } = window.testFixture
     saveSimplifyConfig({ dockStats: true })
   })
-  await page.waitForSelector('[data-dsh-simplify-dock-center]')
+  await page.waitForSelector('[data-dsh-tide-dock-center]')
   await page.waitForFunction(() => {
     const row = document.querySelector('[data-composer-dock]')
-    return row?.style.getPropertyValue('--dsh-simplify-card-width') === '600px'
+    return row?.style.getPropertyValue('--dsh-tide-card-width') === '600px'
   })
 
   // 4. 测试无投影数据时真实 mount：必须真实挂载组件断言 null，而非跳过 mount
@@ -650,11 +650,11 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
     window.mockProjs = {} // 清空投影
     window.renderCtrl()
   })
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-dock-center]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-dock-center]') === null)
   // 确认在无投影状态下 dock row 变量也被优雅清理
   await page.waitForFunction(() => {
     const row = document.querySelector('[data-composer-dock]')
-    return row?.style.getPropertyValue('--dsh-simplify-card-width') === ''
+    return row?.style.getPropertyValue('--dsh-tide-card-width') === ''
   })
 })
 
@@ -746,20 +746,20 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
     root.render(React.createElement(ModelComponent, {}))
   })
 
-  await page.waitForSelector('[data-dsh-simplify-control="model"]')
-  const modelPill = page.locator('[data-dsh-simplify-control="model"]')
-  const effortPill = page.locator('[data-dsh-simplify-control="effort"]')
+  await page.waitForSelector('[data-dsh-tide-control="model"]')
+  const modelPill = page.locator('[data-dsh-tide-control="model"]')
+  const effortPill = page.locator('[data-dsh-tide-control="effort"]')
 
   // 1. 点击模型 pill 展开模型网格浮层
   await modelPill.click()
-  await page.waitForSelector('[data-dsh-simplify-model-grid]')
+  await page.waitForSelector('[data-dsh-tide-model-grid]')
   await page.waitForFunction(() => {
-    const el = document.querySelector('[data-dsh-simplify-model-grid]')
+    const el = document.querySelector('[data-dsh-tide-model-grid]')
     return el && el.style.top !== ''
   })
 
   // 验证弹层向上弹出：底部在按钮上方（允许少量边框重叠或间距）
-  const modelPopup = await page.locator('[data-dsh-simplify-model-grid]').boundingBox()
+  const modelPopup = await page.locator('[data-dsh-tide-model-grid]').boundingBox()
   const modelAnchor = await modelPill.boundingBox()
   assert.ok(modelPopup && modelAnchor)
   assert.ok(
@@ -768,28 +768,28 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
   )
 
   // 验证弹层真实 portal 挂载在 document.body 上，跳脱 card 的 backdrop-filter containing block
-  const isModelInBody = await page.evaluate(() => document.querySelector('[data-dsh-simplify-model-grid]')?.parentElement === document.body)
+  const isModelInBody = await page.evaluate(() => document.querySelector('[data-dsh-tide-model-grid]')?.parentElement === document.body)
   assert.equal(isModelInBody, true)
 
   // 验证点击模型浮层内部（标题/空白处）不触发关闭
-  await page.locator('[data-dsh-simplify-grid-title]').click()
+  await page.locator('[data-dsh-tide-grid-title]').click()
   await page.waitForTimeout(50)
-  assert.equal(await page.locator('[data-dsh-simplify-model-grid]').count(), 1)
+  assert.equal(await page.locator('[data-dsh-tide-model-grid]').count(), 1)
 
   // 点击外部关闭
   await page.mouse.click(10, 10)
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-model-grid]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-model-grid]') === null)
 
   // 2. 点击思考等级 pill 展开思考等级弹层
   await effortPill.click()
-  await page.waitForSelector('[data-dsh-simplify-effort]')
+  await page.waitForSelector('[data-dsh-tide-effort]')
   await page.waitForFunction(() => {
-    const el = document.querySelector('[data-dsh-simplify-effort]')
+    const el = document.querySelector('[data-dsh-tide-effort]')
     return el && el.style.top !== ''
   })
 
   // 验证思考等级弹层向上弹出：底部在按钮上方（允许少量边框重叠或间距）
-  const effortPopup = await page.locator('[data-dsh-simplify-effort]').boundingBox()
+  const effortPopup = await page.locator('[data-dsh-tide-effort]').boundingBox()
   const effortAnchor = await effortPill.boundingBox()
   assert.ok(effortPopup && effortAnchor)
   assert.ok(
@@ -798,17 +798,17 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
   )
 
   // 验证思考等级弹层也真实 portal 挂载在 document.body 上
-  const isEffortInBody = await page.evaluate(() => document.querySelector('[data-dsh-simplify-effort]')?.parentElement === document.body)
+  const isEffortInBody = await page.evaluate(() => document.querySelector('[data-dsh-tide-effort]')?.parentElement === document.body)
   assert.equal(isEffortInBody, true)
 
   // 点击思考等级弹层内部（标题/文字）不误触发关闭
-  await page.locator('[data-dsh-simplify-effort-title]').click()
+  await page.locator('[data-dsh-tide-effort-title]').click()
   await page.waitForTimeout(50)
-  assert.equal(await page.locator('[data-dsh-simplify-effort]').count(), 1)
+  assert.equal(await page.locator('[data-dsh-tide-effort]').count(), 1)
 
   // 点击外部关闭
   await page.mouse.click(10, 10)
-  await page.waitForFunction(() => document.querySelector('[data-dsh-simplify-effort]') === null)
+  await page.waitForFunction(() => document.querySelector('[data-dsh-tide-effort]') === null)
 })
 
 test('关 themeOverrides 恢复原生全局表面', async (t) => {

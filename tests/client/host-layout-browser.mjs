@@ -54,7 +54,7 @@ async function mountHostLayout(page, { cardWidth = 720, hasStats = true, hasMode
     const { SIMPLIFY_TOKENS } = await import('/src/client/tokens.ts')
 
     document.body.setAttribute('data-ds-dark-theme', '')
-    document.body.setAttribute('data-dsh-simplify-theme', '')
+    document.body.setAttribute('data-dsh-tide-theme', '')
     for (const [k, v] of Object.entries(SIMPLIFY_TOKENS)) {
       document.body.style.setProperty(k, v.dark)
     }
@@ -73,7 +73,7 @@ async function mountHostLayout(page, { cardWidth = 720, hasStats = true, hasMode
     `
     document.head.append(style)
 
-    const modelSeatHtml = hasModelSeat ? '<span data-dsh-simplify-seat="model">替代模型</span>' : ''
+    const modelSeatHtml = hasModelSeat ? '<span data-dsh-tide-seat="model">替代模型</span>' : ''
     document.body.innerHTML = `
       <div class="unrelated_header">其他面板标题</div>
       <div id="frame">
@@ -95,7 +95,7 @@ async function mountHostLayout(page, { cardWidth = 720, hasStats = true, hasMode
           </div>
           <div data-composer-dock>
             <div class="slot-wrap">
-              <div data-dsh-simplify-dock>
+              <div data-dsh-tide-dock>
                 <div id="stats"></div>
               </div>
             </div>
@@ -123,7 +123,7 @@ test('宿主结构契约基线（标明非真实桌面）：图片插件不被�
   t.after(async () => { await page.close() })
 
   await mountHostLayout(page, { cardWidth: 720, hasStats: true, hasModelSeat: true })
-  await page.waitForSelector('.dsh-simplify-dock-stats-trigger')
+  await page.waitForSelector('.dsh-tide-dock-stats-trigger')
 
   const result = await page.evaluate(() => {
     const visible = (id) => {
@@ -137,9 +137,9 @@ test('宿主结构契约基线（标明非真实桌面）：图片插件不被�
       const b = el.getBoundingClientRect()
       return { x: b.x, y: b.y, width: b.width, height: b.height }
     }
-    const hudEl = document.querySelector('.dsh-simplify-dock-stats-trigger')
-    const hudRect = hudEl ? r('.dsh-simplify-dock-stats-trigger') : null
-    const items = [...document.querySelectorAll('.dsh-simplify-stat-item:not(.is-duration)')]
+    const hudEl = document.querySelector('.dsh-tide-dock-stats-trigger')
+    const hudRect = hudEl ? r('.dsh-tide-dock-stats-trigger') : null
+    const items = [...document.querySelectorAll('.dsh-tide-stat-item:not(.is-duration)')]
       .map((e) => {
         const b = e.getBoundingClientRect()
         return { x: b.x, y: b.y, width: b.width, height: b.height }
@@ -189,11 +189,11 @@ test('窄屏契约：当容器宽度为 500px (<760px) 时 HUD 单行收纳次�
   t.after(async () => { await page.close() })
 
   await mountHostLayout(page, { cardWidth: 500, hasStats: true, hasModelSeat: true })
-  await page.waitForSelector('.dsh-simplify-dock-stats-trigger')
+  await page.waitForSelector('.dsh-tide-dock-stats-trigger')
 
   const result = await page.evaluate(() => {
-    const b = document.querySelector('.dsh-simplify-dock-stats-trigger').getBoundingClientRect()
-    const items = [...document.querySelectorAll('.dsh-simplify-stat-item')].map((e) => {
+    const b = document.querySelector('.dsh-tide-dock-stats-trigger').getBoundingClientRect()
+    const items = [...document.querySelectorAll('.dsh-tide-stat-item')].map((e) => {
       const rect = e.getBoundingClientRect()
       const style = getComputedStyle(e)
       return { cls: e.className, x: rect.x, y: rect.y, visible: style.display !== 'none', width: rect.width, scrollW: e.scrollWidth, clientW: e.clientWidth }
@@ -235,7 +235,7 @@ test('无数据契约：无会话统计数据时不渲染空托盘', async (t) =
   await mountHostLayout(page, { cardWidth: 720, hasStats: false, hasModelSeat: true })
 
   const hudExists = await page.evaluate(() => {
-    return document.querySelector('.dsh-simplify-dock-stats-trigger') !== null
+    return document.querySelector('.dsh-tide-dock-stats-trigger') !== null
   })
   assert.equal(hudExists, false, 'HUD should not render when there is no stats data')
 })
@@ -246,11 +246,11 @@ test('宽度自适应：单行 HUD 在各窗口比例下不换行、不溢出、
     const page = await browser.newPage({ viewport: { width: Math.max(900, width + 100), height: 720 } })
     try {
       await mountHostLayout(page, { cardWidth: width, hasStats: true, hasModelSeat: true })
-      await page.waitForSelector('.dsh-simplify-dock-stats-trigger')
+      await page.waitForSelector('.dsh-tide-dock-stats-trigger')
       const data = await page.evaluate(() => {
-        const trigger = document.querySelector('.dsh-simplify-dock-stats-trigger')
+        const trigger = document.querySelector('.dsh-tide-dock-stats-trigger')
         const tb = trigger.getBoundingClientRect()
-        const items = [...document.querySelectorAll('.dsh-simplify-stat-item')]
+        const items = [...document.querySelectorAll('.dsh-tide-stat-item')]
           .map((el) => {
             const b = el.getBoundingClientRect()
             return { left: b.left, right: b.right, top: b.top, height: b.height, width: b.width, scrollW: el.scrollWidth, clientW: el.clientWidth }
@@ -287,9 +287,9 @@ test('宽卡片契约：单行 HUD 与卡片同宽对齐，左端起点贴近，
   await mountHostLayout(page, { cardWidth: 1300, hasStats: true, hasModelSeat: true })
 
   const data = await page.evaluate(() => {
-    const trigger = document.querySelector('.dsh-simplify-dock-stats-trigger')
+    const trigger = document.querySelector('.dsh-tide-dock-stats-trigger')
     const tb = trigger.getBoundingClientRect()
-    const items = [...document.querySelectorAll('.dsh-simplify-stat-item')].map((el) => {
+    const items = [...document.querySelectorAll('.dsh-tide-stat-item')].map((el) => {
       const b = el.getBoundingClientRect()
       return { cls: el.className, left: Math.round(b.left), right: Math.round(b.right), top: Math.round(b.top), height: Math.round(b.height) }
     })

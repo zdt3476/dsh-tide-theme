@@ -6,7 +6,7 @@
  * （`[data-composer-dock]`）里注入我们自己的控件容器，让两种状态的排版一致：
  * 模型贴卡片左缘、权限贴右缘、统计项居中。
  *
- * 注入的容器带 `data-dsh-simplify-dock`，因此 `:has()` 隐藏原生座位的规则在 hero
+ * 注入的容器带 `data-dsh-tide-dock`，因此 `:has()` 隐藏原生座位的规则在 hero
  * 态同样生效；进入会话态（slot 出现）时自动移除，交还给 slot 渲染。
  *
  * 权限当前值需要会话投影：hero 里拿不到 slot 的标准 hook，改用轮询读取
@@ -112,9 +112,9 @@ export function mountHeroDock(options: HeroDockOptions): HeroDockHandle | null {
       const permissionValue = options.shared.hooks.useSyncExternalStore(source.subscribe, source.getSnapshot)
       return options.shared.h(
         'div',
-        { 'data-dsh-simplify-dock': '' },
-        options.shared.h('div', { 'data-dsh-simplify-dock-left': '' }, options.shared.h(model as never, {})),
-        options.shared.h('div', { 'data-dsh-simplify-dock-right': '' }, options.shared.h(permission as never, { permissionValue }))
+        { 'data-dsh-tide-dock': '' },
+        options.shared.h('div', { 'data-dsh-tide-dock-left': '' }, options.shared.h(model as never, {})),
+        options.shared.h('div', { 'data-dsh-tide-dock-right': '' }, options.shared.h(permission as never, { permissionValue }))
       )
     }
     componentCache.set(sessionId, component)
@@ -136,7 +136,7 @@ export function mountHeroDock(options: HeroDockOptions): HeroDockHandle | null {
     const seat = document.querySelector('[data-composer-seat]')
     const row = seat?.querySelector('[data-composer-dock]') as HTMLElement | null
     const hasSlot = row?.querySelector('[data-slot="conversation.composer.dock"]') !== null && row !== null
-    const existing = row?.querySelector('[data-dsh-simplify-hero-host]') as HTMLElement | null
+    const existing = row?.querySelector('[data-dsh-tide-hero-host]') as HTMLElement | null
     const sessionId = readCurrentSessionId(localStorage.getItem(CURRENT_SESSION_KEY))
 
     // 进入会话态或找不到会话：撤掉注入，交还 slot / 原生控件。
@@ -147,7 +147,7 @@ export function mountHeroDock(options: HeroDockOptions): HeroDockHandle | null {
     if (existing !== null && mounted !== null && mounted.sessionId === sessionId && existing === mounted.host && mounted.host.isConnected) return
     remove()
     const host = document.createElement('div')
-    host.setAttribute('data-dsh-simplify-hero-host', '')
+    host.setAttribute('data-dsh-tide-hero-host', '')
     row.appendChild(host)
     const root = options.React.createRoot(host)
     root.render(options.shared.h(componentFor(sessionId) as never, {}))
@@ -161,7 +161,7 @@ export function mountHeroDock(options: HeroDockOptions): HeroDockHandle | null {
       try {
         sync()
       } catch (error) {
-        console.error('[dsh-simplify-theme] hero dock sync failed:', error)
+        console.error('[dsh-tide-theme] hero dock sync failed:', error)
       }
     })
   }
