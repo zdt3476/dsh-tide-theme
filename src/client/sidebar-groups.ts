@@ -111,9 +111,24 @@ function collectGroups(slot: Element): GroupHandle[] {
 }
 
 /**
+ * 挂载归属标记：写在宿主 slot 上的自增序号。
+ *
+ * 所有者判定必须落在 DOM 上而不是模块变量里——插件被重复加载时会存在两份
+ * 相互独立的模块实例，各持一份 `activeMount` 互不可见，模块级单例对它们完全
+ * 失效（实测仍会叠成双份标头）。把序号写到共用的 DOM 节点上，任何实例都能
+ * 据此判断自己是否已被后来者取代。
+ */
+const OWNER_ATTR = 'data-dsh-tide-groups-owner'
+
+/** 生成全实例唯一的归属序号（时间戳 + 随机，避免跨模块实例撞号）。 */
+function nextOwnerId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+/**
  * 清理注入物并复位宿主属性。
  *
- * 供两处复用：单例替换旧实例时回收残留，以及 unmount 时还原宿主初始态。
+ * 供两处复用：新的所有者接管时回收残留，以及 unmount 时还原宿主初始态。
  */
 function teardownInjectedNodes(slot: Element): void {
   for (const node of slot.querySelectorAll('[data-dsh-tide-section], [data-dsh-tide-groups-controls]')) {
@@ -129,22 +144,17 @@ function teardownInjectedNodes(slot: Element): void {
   }
 }
 
-/**
- * 当前活跃实例。
- *
- * 宿主重挂载（工作区列表重渲染、切换视图）会再次调用 mount。若只清理 DOM 而
- * 不停止旧实例，旧实例的 MutationObserver 仍挂在 slot 上，会把自己被删掉的
- * 标头重新插回来，最终叠成两份「置顶」小节。因此必须持有实例引用并先 unmount。
- */
-let activeMount: SidebarGroupsMount | null = null
-
 export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroupsMount | null {
   const slot = document.querySelector(SLOT_SELECTOR)
   if (slot === null) return null
 
-  activeMount?.unmount()
-  activeMount = null
+  // 接管：无论上一任是同一实例还是另一份模块实例，先抢到归属序号。
+  // 旧实例在下次 apply 时会发现序号已变，自行解绑（见 isOwner）。
+  const owner = nextOwnerId()
+  slot.setAttribute(OWNER_ATTR, owner)
   teardownInjectedNodes(slot)
+
+  const isOwner = () => slot.getAttribute(OWNER_ATTR) === owner
 
   const pinned = new Set(parsePinned(localStorage.getItem(PINNED_KEY)))
   let expanded = localStorage.getItem(EXPANDED_KEY) === '1'
@@ -242,8 +252,16 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
 
   const originalOrders = new WeakMap<HTMLElement, string>()
   let frame = 0
+  let released = false
   const apply = () => {
     frame = 0
+    // 归属权已被后来者（含另一份模块实例）接管：本实例必须彻底停手，
+    // 否则它的 observer 会把已被清掉的标头重新插回来，叠成双份。
+    if (released || !isOwner()) {
+      // 自己已被取代：只摘监听，不动 DOM（DOM 现在归新主人所有）。
+      release(false)
+      return
+    }
     const groups = collectGroups(slot)
     const config = loadSimplifyConfig()
 
@@ -341,38 +359,47 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
     })
   }
 
-  toggle.addEventListener('click', (event) => {
+  const onToggleClick = (event: Event) => {
     event.stopPropagation()
     expanded = !expanded
     localStorage.setItem(EXPANDED_KEY, expanded ? '1' : '0')
     apply()
-  })
+  }
+  toggle.addEventListener('click', onToggleClick)
 
   const observer = new MutationObserver(schedule)
   observer.observe(slot, { childList: true, subtree: true })
   const unsubscribeWorkspaces = options.workspaces.subscribe(schedule)
   const unsubscribeSessions = options.sessions.subscribe(schedule)
   const unsubscribeConfig = onSimplifyConfigChange(schedule)
-  schedule()
 
-  const mount: SidebarGroupsMount = {
-    unmount: () => {
-      observer.disconnect()
-      menuObserver.disconnect()
-      unsubscribeWorkspaces()
-      unsubscribeSessions()
-      unsubscribeConfig()
-      document.removeEventListener('pointerdown', onPointerDownCapture, true)
-      if (frame !== 0) window.cancelAnimationFrame(frame)
-      for (const group of collectGroups(slot)) {
-        const order = originalOrders.get(group.element)
-        if (order !== undefined) group.element.style.order = order
-      }
-      // 与挂载前的回收共用同一套清理，保证卸载后不残留任何注入物或宿主属性。
-      teardownInjectedNodes(slot)
-      if (activeMount === mount) activeMount = null
+  /**
+   * 停用本实例：摘掉全部监听并还原宿主初始态。
+   *
+   * 只在内部使用——既用于正常 unmount，也用于归属权被后来者接管时自解绑。
+   * 归属权已不属于自己时不要再 teardown DOM，否则会误删新主人的注入物。
+   */
+  const release = (teardown: boolean) => {
+    if (released) return
+    released = true
+    observer.disconnect()
+    menuObserver.disconnect()
+    unsubscribeWorkspaces()
+    unsubscribeSessions()
+    unsubscribeConfig()
+    document.removeEventListener('pointerdown', onPointerDownCapture, true)
+    toggle.removeEventListener('click', onToggleClick)
+    if (frame !== 0) window.cancelAnimationFrame(frame)
+    if (!teardown) return
+    for (const group of collectGroups(slot)) {
+      const order = originalOrders.get(group.element)
+      if (order !== undefined) group.element.style.order = order
     }
+    teardownInjectedNodes(slot)
+    if (slot.getAttribute(OWNER_ATTR) === owner) slot.removeAttribute(OWNER_ATTR)
   }
-  activeMount = mount
+
+  const mount: SidebarGroupsMount = { unmount: () => release(true) }
+  schedule()
   return mount
 }

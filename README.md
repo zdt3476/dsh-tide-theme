@@ -235,7 +235,7 @@ pnpm test        # TypeScript 类型检查 + Vitest 单元测试（110 tests）
 pnpm build       # 编译产出 lib/index.js (Host) 与 lib/client.js (Client)
 pnpm check       # test + build 全量流水线检查
 
-# 浏览器契约测试（真实 Chromium，53 项）
+# 浏览器契约测试（真实 Chromium，54 项）
 # 注意：必须逐个列出测试文件。tests/client/ 下还有 dock-stats-fixture.mjs 等夹具，
 # 用 glob 会把夹具当成测试文件从而误报失败。
 PLAYWRIGHT_MODULE=<playwright/index.mjs> CHROMIUM_EXECUTABLE=<chromium> \

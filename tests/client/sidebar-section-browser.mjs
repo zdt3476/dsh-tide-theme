@@ -357,3 +357,58 @@ test('重复挂载不产生第二个「置顶」小节（宿主重挂载回归�
   // 修复前此处为 2：旧实例未停用，observer 会把被删的标头重新插回来。
   assert.equal(result.second, 1, '重复挂载后仍应只有 1 个置顶小节')
 })
+
+test('两份独立模块实例先后挂载也不产生重复「置顶」小节（插件重复加载回归）', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  await page.goto(`${origin}/fixture`)
+
+  const result = await page.evaluate(async () => {
+    // 用不同 query 绕过模块缓存，得到两份互不可见的模块实例，
+    // 等价于插件被加载两次时各持一份模块级状态的情形。
+    const first = await import('/src/client/sidebar-groups.ts?instance=1')
+    const second = await import('/src/client/sidebar-groups.ts?instance=2')
+
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces', JSON.stringify(['default']))
+    document.getElementById('mount').innerHTML = `
+      <div data-slot="sidebar.workspaces">
+        <div class="workspace-list-container">
+          <div><span><div data-row-key="workspace:default">default</div></span></div>
+          <div><span><div data-row-key="workspace:other">other</div></span></div>
+        </div>
+      </div>`
+
+    const dict = {
+      'groups.pinnedTitle': '置顶',
+      'groups.unpinnedTitle': '工作区',
+      'groups.more': (p) => `还有 ${p.count} 个工作区`,
+      'groups.collapse': '收起工作区'
+    }
+    const options = {
+      locale: (k, p) => typeof dict[k] === 'function' ? dict[k](p) : dict[k] ?? k,
+      createElement: (tag) => document.createElement(tag),
+      archivedFilter: () => 'default',
+      workspaces: {
+        getSnapshot: () => ({ items: [{ workspaceId: 'default', sessionIds: [] }, { workspaceId: 'other', sessionIds: [] }] }),
+        subscribe: () => () => {}
+      },
+      sessions: { getSnapshot: () => ({ byId: {} }), subscribe: () => () => {} }
+    }
+    const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
+    first.mountSidebarGroups(options)
+    await settle()
+    second.mountSidebarGroups(options)
+    await settle()
+    // 旧实例的 observer 可能在接管后才触发，再等一帧确认它没有把标头插回来。
+    await settle()
+
+    return {
+      pinned: document.querySelectorAll('[data-dsh-tide-section="pinned"]').length,
+      unpinned: document.querySelectorAll('[data-dsh-tide-section="unpinned"]').length
+    }
+  })
+
+  assert.equal(result.pinned, 1, '两份模块实例下应只有 1 个置顶小节')
+  assert.equal(result.unpinned, 1, '两份模块实例下应只有 1 个工作区小节')
+})
