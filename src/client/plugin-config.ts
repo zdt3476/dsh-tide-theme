@@ -47,7 +47,7 @@ export const DEFAULT_SIMPLIFY_CONFIG: Readonly<SimplifyConfig> = Object.freeze({
   themeOverrides: true
 })
 
-export const CONFIG_STORAGE_KEY = 'dsh.simplify-theme.config'
+export const CONFIG_STORAGE_KEY = 'dsh.tide-theme.config'
 export const CONFIG_CHANGE_EVENT = 'dsh-tide-theme:config-change'
 
 function parseLimit(val: unknown, fallback: number): number {

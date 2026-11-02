@@ -147,7 +147,7 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   assert.equal(await page.locator('.dsh-tide-settings-notice').textContent(), '✓ 设置已更新并即时生效')
 
   // 验证 localStorage 持久化内容
-  const storedConfig = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.simplify-theme.config')))
+  const storedConfig = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.tide-theme.config')))
   assert.equal(storedConfig.dockStats, false)
   assert.equal(storedConfig.sidebarPinnedLimit, 6)
   assert.equal(storedConfig.sidebarUnpinnedLimit, 4)
