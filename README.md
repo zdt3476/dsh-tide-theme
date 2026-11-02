@@ -171,13 +171,13 @@ Tide Glass 为 DSH 提供冰蓝玻璃表面、冷灰文字与清晰的信息层�
 dsh plugin --profile desktop add dsh-tide-theme
 
 # GitHub 源码
-dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-simplify-theme.git
+dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-tide-theme.git
 
 # 本地开发软链（link）
 dsh plugin --profile desktop add link:"$PWD"
 
 # GitHub Release 预构建包
-dsh plugin --profile desktop add https://github.com/zdt3476/dsh-simplify-theme/releases/download/v0.4.0/dsh-tide-theme-0.4.0.tgz
+dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/releases/download/v0.4.0/dsh-tide-theme-0.4.0.tgz
 ```
 
 安装后在 **设置 → 插件** 中启用，并按下 `Cmd/Ctrl + R` 重载客户端。
