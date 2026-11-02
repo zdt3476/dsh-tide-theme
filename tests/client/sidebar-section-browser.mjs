@@ -304,3 +304,56 @@ test('置顶交互重构：顶栏移除置顶按钮，工作区三点菜单（·
   const unpinItem = page.locator('[data-dsh-tide-workspace-pin="server"]')
   assert.match(await unpinItem.textContent(), /取消置顶/)
 })
+
+test('重复挂载不产生第二个「置顶」小节（宿主重挂载回归）', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  await page.goto(`${origin}/fixture`)
+
+  const result = await page.evaluate(async () => {
+    const { mountSidebarGroups } = await import('/src/client/sidebar-groups.ts')
+
+    localStorage.setItem('dsh-tide-theme.pinned-workspaces', JSON.stringify(['default']))
+    document.getElementById('mount').innerHTML = `
+      <div data-slot="sidebar.workspaces">
+        <div class="workspace-list-container">
+          <div><span><div data-row-key="workspace:default">default</div></span></div>
+          <div><span><div data-row-key="workspace:other">other</div></span></div>
+        </div>
+      </div>`
+
+    const dict = {
+      'groups.pinnedTitle': '置顶',
+      'groups.unpinnedTitle': '工作区',
+      'groups.more': (p) => `还有 ${p.count} 个工作区`,
+      'groups.collapse': '收起工作区'
+    }
+    const options = {
+      locale: (k, p) => typeof dict[k] === 'function' ? dict[k](p) : dict[k] ?? k,
+      createElement: (tag) => document.createElement(tag),
+      archivedFilter: () => 'default',
+      workspaces: {
+        getSnapshot: () => ({ items: [{ workspaceId: 'default', sessionIds: [] }, { workspaceId: 'other', sessionIds: [] }] }),
+        subscribe: () => () => {}
+      },
+      sessions: { getSnapshot: () => ({ byId: {} }), subscribe: () => () => {} }
+    }
+
+    const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+
+    mountSidebarGroups(options)
+    await settle()
+    const first = document.querySelectorAll('[data-dsh-tide-section="pinned"]').length
+
+    // 宿主重渲染工作区列表并再次挂载，旧实例的 observer 必须先被摘掉。
+    mountSidebarGroups(options)
+    await settle()
+    const second = document.querySelectorAll('[data-dsh-tide-section="pinned"]').length
+
+    return { first, second }
+  })
+
+  assert.equal(result.first, 1, '首次挂载应只有 1 个置顶小节')
+  // 修复前此处为 2：旧实例未停用，observer 会把被删的标头重新插回来。
+  assert.equal(result.second, 1, '重复挂载后仍应只有 1 个置顶小节')
+})

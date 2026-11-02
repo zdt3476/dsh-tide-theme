@@ -110,9 +110,41 @@ function collectGroups(slot: Element): GroupHandle[] {
   return handles
 }
 
+/**
+ * 清理注入物并复位宿主属性。
+ *
+ * 供两处复用：单例替换旧实例时回收残留，以及 unmount 时还原宿主初始态。
+ */
+function teardownInjectedNodes(slot: Element): void {
+  for (const node of slot.querySelectorAll('[data-dsh-tide-section], [data-dsh-tide-groups-controls]')) {
+    node.remove()
+  }
+  for (const group of collectGroups(slot)) {
+    group.element.removeAttribute('data-dsh-tide-group')
+    group.element.removeAttribute('data-dsh-tide-pinned')
+    group.element.removeAttribute('data-dsh-tide-pinned-tail')
+    group.element.removeAttribute('data-dsh-tide-collapsed')
+    group.row.removeAttribute('data-dsh-tide-count')
+    group.row.removeAttribute('title')
+  }
+}
+
+/**
+ * 当前活跃实例。
+ *
+ * 宿主重挂载（工作区列表重渲染、切换视图）会再次调用 mount。若只清理 DOM 而
+ * 不停止旧实例，旧实例的 MutationObserver 仍挂在 slot 上，会把自己被删掉的
+ * 标头重新插回来，最终叠成两份「置顶」小节。因此必须持有实例引用并先 unmount。
+ */
+let activeMount: SidebarGroupsMount | null = null
+
 export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroupsMount | null {
   const slot = document.querySelector(SLOT_SELECTOR)
   if (slot === null) return null
+
+  activeMount?.unmount()
+  activeMount = null
+  teardownInjectedNodes(slot)
 
   const pinned = new Set(parsePinned(localStorage.getItem(PINNED_KEY)))
   let expanded = localStorage.getItem(EXPANDED_KEY) === '1'
@@ -323,7 +355,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
   const unsubscribeConfig = onSimplifyConfigChange(schedule)
   schedule()
 
-  return {
+  const mount: SidebarGroupsMount = {
     unmount: () => {
       observer.disconnect()
       menuObserver.disconnect()
@@ -335,14 +367,12 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       for (const group of collectGroups(slot)) {
         const order = originalOrders.get(group.element)
         if (order !== undefined) group.element.style.order = order
-        group.element.removeAttribute('data-dsh-tide-group')
-        group.element.removeAttribute('data-dsh-tide-pinned')
-        group.element.removeAttribute('data-dsh-tide-collapsed')
-        group.row.removeAttribute('data-dsh-tide-count')
       }
-      controls.remove()
-      pinnedHeader.remove()
-      unpinnedHeader.remove()
+      // 与挂载前的回收共用同一套清理，保证卸载后不残留任何注入物或宿主属性。
+      teardownInjectedNodes(slot)
+      if (activeMount === mount) activeMount = null
     }
   }
+  activeMount = mount
+  return mount
 }
