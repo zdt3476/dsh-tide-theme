@@ -220,7 +220,7 @@ dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-tide-theme.g
 dsh plugin --profile desktop add link:"$PWD"
 
 # GitHub Release 预构建包
-dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/releases/download/v0.4.1/dsh-tide-theme-0.4.1.tgz
+dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/releases/download/v0.5.0/dsh-tide-theme-0.5.0.tgz
 ```
 
 安装后在 **设置 → 插件** 中启用，并按下 `Cmd/Ctrl + R` 重载客户端。
