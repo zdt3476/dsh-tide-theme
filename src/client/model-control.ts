@@ -54,10 +54,8 @@ export function createModelControl(props: ModelControlProps) {
     const selection: ModelSelection | null = state.pending ?? state.current
     const name = displayName(groups, selection)
     const group = selection === null ? undefined : groups.find((candidate) => candidate.id === selection.provider)
-    // 供应商前缀只在同名模型跨供应商重名时才需要；否则让模型名独占空间，长名字更可读。
-    const duplicatedName = groups.filter((candidate) => candidate.models.some((model) => model.name === name)).length > 1
-    const providerLabel = group === undefined ? '' : providerName(group.id, group.name)
-    const modelLabel = name === '' ? t('model.placeholder') : duplicatedName ? `${providerLabel} / ${name}` : name
+    const providerLabel = group === undefined ? selection?.provider ?? '' : providerName(group.id, group.name)
+    const modelLabel = name === '' ? t('model.placeholder') : `${providerLabel} / ${name}`
     const effort = effortLabel(groups, selection, t('effort.providerDefault'), state.retainedEffort)
     const busy = state.status === 'selecting' || state.status === 'loading'
 
@@ -127,7 +125,7 @@ export function createModelControl(props: ModelControlProps) {
         'data-dsh-tide-pill': '',
         'data-dsh-tide-control': kind,
         'data-dsh-tide-emphasis': kind,
-        title: kind === 'model' && name !== '' ? `${providerLabel} / ${name}` : undefined,
+        title: kind === 'model' ? modelLabel : undefined,
         style: color === undefined ? undefined : { '--dsh-tide-provider-color': color },
         'aria-label': kind === 'effort' ? `${t('effort.title')}：${effort ?? t('effort.unavailableShort')}` : undefined,
         'aria-haspopup': 'dialog',

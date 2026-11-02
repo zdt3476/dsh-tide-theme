@@ -658,6 +658,45 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
   })
 })
 
+const modelLabelCases = [
+  { name: '唯一模型', expected: 'CPA / GPT-6', groups: [{ id: 'cpa', name: 'CPA', models: [{ id: 'gpt-6', name: 'GPT-6' }] }], current: { provider: 'cpa', model: 'gpt-6' } },
+  { name: '跨供应商同名模型', expected: 'OMC / GPT-6', groups: ['CPA', 'OMC'].map(name => ({ id: name.toLowerCase(), name, models: [{ id: 'gpt-6', name: 'GPT-6' }] })), current: { provider: 'omc', model: 'gpt-6' } },
+  { name: '目录缺失', expected: 'cpa / gpt-6', groups: [], current: { provider: 'cpa', model: 'gpt-6' }, status: 'loading' },
+  { name: '模型缺失', expected: 'CPA / gpt-6', groups: [{ id: 'cpa', name: 'CPA', models: [] }], current: { provider: 'cpa', model: 'gpt-6' } },
+  { name: '内置供应商本地化', expected: 'DeepSeek 官方 / V3', groups: [{ id: 'deepseek-official', name: 'deepseek-official', models: [{ id: 'v3', name: 'V3' }] }], current: { provider: 'deepseek-official', model: 'v3' } },
+  { name: 'pending 优先于 current', expected: 'omc / gpt-6', groups: [], current: { provider: 'cpa', model: 'old' }, pending: { provider: 'omc', model: 'gpt-6' }, status: 'selecting' },
+  { name: '无选择占位', expected: '选择模型', groups: [], current: null }
+]
+
+for (const scenario of modelLabelCases) {
+  test(`ModelControl 关闭态供应商前缀：${scenario.name}`, async (t) => {
+    const page = await browser.newPage()
+    t.after(() => page.close())
+    await page.goto(`${origin}/fixture`)
+    await page.evaluate(async (scenario) => {
+      await import('/tests/client/dock-stats-fixture.mjs')
+      const { React, ReactDOM, createModelControl } = window.testFixture
+      const snapshot = { pending: null, status: 'ready', error: null, failures: [], ...scenario }
+      const ModelControl = createModelControl({
+        sessionId: 'model-label-test',
+        directories: { directoryFor: () => ({
+          store: { subscribe: () => () => {}, getSnapshot: () => snapshot },
+          load: async () => snapshot,
+          select: async () => ({ ok: true })
+        }) },
+        shared: { h: React.createElement, hooks: React, t: key => key === 'model.placeholder' ? '选择模型' : key }
+      })
+      ReactDOM.createRoot(document.getElementById('mount')).render(React.createElement(ModelControl))
+    }, scenario)
+    const pill = page.locator('[data-dsh-tide-control="model"]')
+    await pill.waitFor({ state: 'visible' })
+    assert.equal(await pill.locator('[data-dsh-tide-pill-label]').textContent(), scenario.expected)
+    assert.equal(await pill.getAttribute('title'), scenario.expected)
+    assert.equal(await pill.getAttribute('aria-expanded'), 'false')
+    assert.equal(await page.locator('[data-dsh-tide-model-grid]').count(), 0)
+  })
+}
+
 test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，点击内部不误关', async (t) => {
   const page = await browser.newPage()
   t.after(() => page.close())
