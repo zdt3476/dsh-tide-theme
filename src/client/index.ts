@@ -13,6 +13,7 @@
 
 import { SIMPLIFY_TOKENS, THEME_SOURCE } from './tokens'
 import { UI_CSS } from './styles'
+import { migrateLegacyStorageKeys } from './legacy-migration'
 import { mountSidebarTabs } from './sidebar-tabs'
 import { mountSidebarFilter } from './sidebar-filter-mount'
 import { mountSidebarGroups } from './sidebar-groups'
@@ -501,6 +502,14 @@ export function apply(ctx: ClientCtx): void {
   // 先确认运行的是不是最新构建，而不是继续怀疑功能本身。
   console.info(`[${PLUGIN_ID}] 已加载构建 ${BUILD}`)
   if (typeof document !== 'undefined') document.documentElement.dataset.dshTideBuild = BUILD
+
+  // 必须在任何读取配置/置顶状态的代码之前跑：0.4.0 换了包名，持久化键前缀
+  // 也换了，不迁移的话升级用户会看到置顶与工作区分区凭空消失。
+  const migration = migrateLegacyStorageKeys()
+  if (migration.migrated.length > 0) {
+    console.info(`[${PLUGIN_ID}] 已从旧版本键迁移: ${migration.migrated.join(', ')}`)
+  }
+
   step('locale', () => ctx.locale.register(PLUGIN_ID, { zh: DICT_ZH, en: DICT_EN }))
 
   // 独立管理 body 门控属性，不与 ctx.theme 服务时序强耦合：

@@ -7,5 +7,5 @@
 # 想临时关掉皮肤，直接在插件管理里禁用本插件即可；卸载 token 层后界面
 # 会立即还原成内置配色，不残留任何偏好设置。
 - insert:
-    - id: tide-theme
+    - id: dsh-tide-theme
       name: dsh-tide-theme
