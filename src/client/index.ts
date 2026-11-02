@@ -36,8 +36,8 @@ import type { PermissionSession } from './permission-control'
 const PLUGIN_ID = 'dsh-tide-theme'
 
 /** 构建时注入；未注入（本地直接跑源码）时回落到 dev。 */
-declare const __DSH_SIMPLIFY_BUILD__: string
-const BUILD = typeof __DSH_SIMPLIFY_BUILD__ === 'string' ? __DSH_SIMPLIFY_BUILD__ : 'dev'
+declare const __DSH_TIDE_BUILD__: string
+const BUILD = typeof __DSH_TIDE_BUILD__ === 'string' ? __DSH_TIDE_BUILD__ : 'dev'
 
 interface LocaleService {
   register: (ns: string, dicts: Record<string, Record<string, string>>) => () => void

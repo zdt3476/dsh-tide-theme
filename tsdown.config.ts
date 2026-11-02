@@ -34,7 +34,7 @@ export default defineConfig([
     format: ['cjs'],
     platform: 'browser',
     target: 'es2024',
-    define: { __DSH_SIMPLIFY_BUILD__: JSON.stringify(`${pkg.version}+${buildStamp}`) },
+    define: { __DSH_TIDE_BUILD__: JSON.stringify(`${pkg.version}+${buildStamp}`) },
     dts: false,
     sourcemap: true,
     clean: false,
