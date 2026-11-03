@@ -1,18 +1,10 @@
 [
   "docs/images/banner-dark.png",
-  "docs/images/banner-light.png",
   "docs/images/current-dock-dark.png",
   "docs/images/current-dock-light.png",
-  "docs/images/current-dock-dark-native.png",
-  "docs/images/current-dock-light-native.png",
   "docs/images/current-delegation-dark.png",
   "docs/images/current-delegation-light.png",
-  "docs/images/current-delegation-dark-native.png",
-  "docs/images/current-delegation-light-native.png",
   "docs/images/current-sidebar-dark.png",
-  "docs/images/current-sidebar-light.png",
   "docs/images/current-settings-dark.png",
-  "docs/images/current-settings-light.png",
-  "docs/images/current-model-dark.png",
-  "docs/images/current-model-light.png"
+  "docs/images/current-model-dark.png"
 ]
