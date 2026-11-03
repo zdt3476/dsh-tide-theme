@@ -58,7 +58,10 @@ export function createModelControl(props: ModelControlProps) {
     // 始终显示「供应商 / 模型」：供应商是判断模型来源的必要信息，不能为了宽度把它去掉。
     // 宽度问题由 CSS 侧的 max-width 解决；真放不下时省略号作用在模型名尾部，
     // 供应商名位于最左侧，始终可读。
-    const fullLabel = name === '' ? t('model.placeholder') : `${providerLabel} / ${name}`
+    // 供应商缺失时不能拼出前导孤立斜杠（「 / gpt-4」），此时退化为只显示模型名。
+    const fullLabel = name === ''
+      ? t('model.placeholder')
+      : (providerLabel === '' ? name : `${providerLabel} / ${name}`)
     const modelLabel = fullLabel
     const effort = effortLabel(groups, selection, t('effort.providerDefault'), state.retainedEffort)
     const busy = state.status === 'selecting' || state.status === 'loading'

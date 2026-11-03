@@ -1862,24 +1862,32 @@ body[data-dsh-tide-theme][data-ds-dark-theme] .subagent-topology-avatar.is-blue 
   color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 70%, var(--dsw-alias-label-primary));
 }
 
-/* token 用量与预估金额：数值用等宽数字并右对齐，金额比用量更弱一档，
- * 让「实际消耗」和「换算金额」在视觉上分主次；两者都不抢状态角标的注意力。 */
+/* token 用量与预估金额：数值用等宽数字，金额比用量更弱一档，
+ * 让「实际消耗」和「换算金额」在视觉上分主次；两者都不抢状态角标的注意力。
+ * 不设背景色块：卡片本身就是可点按钮，任何「胶囊」都会被误读成可点击的 Badge。 */
 .subagent-checklist-item.is-usage {
   align-items: center;
   gap: 6px;
+  /* 与同卡片内的步数保持一致：超长数字/窄屏挤压时不换行，
+   * 否则左侧图标会因 align-items:center 在两行之间垂直居中而错位。 */
+  white-space: nowrap;
 }
-.subagent-topology-node-usage {
+.subagent-topology-node-usage,
+.subagent-topology-node-cost {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }
+/* 金额用前导「~」表达「约」，不加背景与内边距，避免看起来像可点击的按钮；
+ * 显式 cursor: default 抵消父级按钮继承的手型光标。 */
 .subagent-topology-node-cost {
   margin-left: 2px;
-  padding: 0 4px;
-  border-radius: var(--dsw-radius-sm);
-  background: var(--dsw-alias-interactive-bg-subtle, var(--dsw-alias-interactive-bg-hover));
-  color: var(--dsw-alias-label-secondary);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum' 1;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: default;
+}
+.subagent-topology-node-cost::before {
+  content: '~';
+  margin-right: 1px;
+  opacity: 0.75;
 }
 
 .subagent-check-icon {

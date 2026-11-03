@@ -91,11 +91,28 @@ describe('model-pricing 金额估算', () => {
     expect(estimateCost(undefined, { uncachedInputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, outputTokens: 0 })).toBeUndefined()
   })
 
-  it('小额金额保留有效位，不会全显示成 $0.00', () => {
-    expect(formatCost(0)).toBe('$0')
+  it('小额金额保留有效位，且不产出 $0 / $0.0000 噪声', () => {
+    // 0 与极小值返回空串：调用方据此不渲染金额，避免免费模型挂一个「$0」色块。
+    expect(formatCost(0)).toBe('')
+    expect(formatCost(0.00004)).toBe('<$0.0001')
     expect(formatCost(0.00012)).toBe('$0.0001')
     expect(formatCost(0.0234)).toBe('$0.023')
     expect(formatCost(1.234)).toBe('$1.23')
+  })
+})
+
+describe('免费模型不产生金额噪声', () => {
+  it('单价全为 0 时 formatCost 返回空串，渲染端据此不显示金额', () => {
+    const freePrice = { prompt: 0, completion: 0 }
+    const cost = estimateCost(freePrice, {
+      uncachedInputTokens: 100000,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 50000
+    })
+    // 成本确实是 0，但不应显示成「$0」。
+    expect(cost).toBe(0)
+    expect(formatCost(cost as number)).toBe('')
   })
 })
 

@@ -563,15 +563,19 @@ test('子代理节点展示 token 消耗，并在拿到 OpenRouter 价目后补�
   const page = await browser.newPage()
   t.after(() => page.close())
   // 固定价目，避免测试依赖外网真实价格波动。
-  await page.route('**/openrouter.ai/**', (route) => route.fulfill({
-    status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({
-      data: [
-        { id: 'deepseek/deepseek-v4.1-flash', pricing: { prompt: '0.0000003', completion: '0.0000012', input_cache_read: '0.000000006' } }
-      ]
+  await page.route('**/openrouter.ai/**', (route) => {
+    // 记录请求次数：用于断言「折叠时不拉取」。
+    void page.evaluate(() => { window.__priceRequestCount = (window.__priceRequestCount ?? 0) + 1 })
+    void route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [
+          { id: 'deepseek/deepseek-v4.1-flash', pricing: { prompt: '0.0000003', completion: '0.0000012', input_cache_read: '0.000000006' } }
+        ]
+      })
     })
-  }))
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -605,6 +609,10 @@ test('子代理节点展示 token 消耗，并在拿到 OpenRouter 价目后补�
       openSession: () => {}
     })
   })
+
+  // 折叠状态下不应发起价目请求（800KB 目录不值得为看不见的金额买单）。
+  const requestsBeforeExpand = await page.evaluate(() => window.__priceRequestCount ?? 0)
+  assert.equal(requestsBeforeExpand, 0, '折叠时不应请求 OpenRouter 价目')
 
   // 批次默认折叠；展开后再断言可见内容。
   await page.locator(summary).click()

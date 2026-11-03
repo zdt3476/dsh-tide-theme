@@ -58,8 +58,6 @@ describe('delegation node extraction', () => {
       id: 'child1',
       title: 'explorer',
       model: 'deepseek-v4.1-flash',
-      // provider 一并带出，供 OpenRouter 定价匹配使用。
-      provider: 'deepseek',
       status: 'done',
       durationMs: 146_000,
       steps: 91

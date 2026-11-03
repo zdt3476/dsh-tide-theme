@@ -335,9 +335,10 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
   const userToggled = new WeakSet<HTMLElement>()
   const painters = new Map<HTMLElement, () => void>()
   const claimedByRow = new WeakMap<HTMLElement, string>()
-  // 价目表按需拉取：拿到后重绘一次，让已渲染的节点补上金额；拿不到就保持只显示 token。
+  // 价目表按需拉取：只在委派面板首次展开时请求，拿到后重绘补上金额；
+  // 拿不到就保持只显示 token，并允许下次展开重试（冷却在 model-pricing 内部控制）。
   let prices: Map<string, TokenPrice> | null = null
-  let pricesRequested = false
+  let pricesPending = false
   let ticker: number | undefined
   let frame = 0
   let debug = false
@@ -345,6 +346,17 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     debug = localStorage.getItem('dsh-tide-theme.debug') === '1'
   } catch {
     debug = false
+  }
+
+  const ensurePrices = (): void => {
+    if (prices !== null || pricesPending) return
+    pricesPending = true
+    void getPriceIndex().then((index) => {
+      pricesPending = false
+      if (index === null) return // 失败不锁定：下次展开会再次尝试，退避由 model-pricing 控制
+      prices = index
+      schedule()
+    })
   }
 
   const head = (text: string, cls: string): HTMLElement => {
@@ -431,7 +443,8 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
       const usageIndicator = icon(['M2 8h2', 'M6 5v6', 'M10 3v10', 'M14 6v4'], 10)
       usageIndicator.setAttribute('aria-hidden', 'true')
       const usageText = `${formatTokenCount(node.usage.totalTokens)} tokens`
-      const cost = estimateCost(node.usage === undefined ? undefined : lookupPrice(prices ?? new Map(), node.model ?? ''), node.usage)
+      const price = lookupPrice(prices ?? new Map(), node.model ?? '')
+      const cost = estimateCost(price, node.usage)
       const usageNode = head(usageText, 'subagent-topology-node-usage')
       usageNode.title = [
         `未命中缓存输入 ${node.usage.uncachedInputTokens.toLocaleString()}`,
@@ -440,8 +453,9 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
         `输出 ${node.usage.outputTokens.toLocaleString()}`
       ].join('\n')
       usageItem.append(usageIndicator, usageNode)
-      if (cost !== undefined) {
-        const costText = formatCost(cost)
+      // formatCost 对 0 和极小值返回空串：免费模型不为它渲染一个「$0」色块。
+      const costText = cost === undefined ? '' : formatCost(cost)
+      if (costText !== '') {
         const costNode = head(costText, 'subagent-topology-node-cost')
         costNode.title = `按 OpenRouter 公开单价估算：${costText}（仅供参考，不含分时优惠）`
         usageItem.append(costNode)
@@ -576,7 +590,12 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
       section.classList.toggle('is-collapsed', !open)
       summary.setAttribute('aria-expanded', String(open))
       summary.title = options.locale(open ? 'delegation.collapse' : 'delegation.expand')
-      if (open) window.requestAnimationFrame(repaint)
+      if (open) {
+        // 价目只在真正展开后才拉取：折叠状态下用户看不到金额，没必要为它花
+        // 800KB 带宽和 JSON 解析。失败时允许下次展开重试（冷却由 model-pricing 控制）。
+        ensurePrices()
+        window.requestAnimationFrame(repaint)
+      }
     }
     const initialOpen = userToggled.has(host)
       ? expandedBatches.has(host)
@@ -793,17 +812,6 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     }
   }
   window.addEventListener('resize', repaintAll)
-
-  // 价目表懒加载：首次挂载就发起。拿到后走完整 sync 重建节点，金额才会出现——
-  // repaintAll 只重画连线，不重建节点内容。
-  if (!pricesRequested) {
-    pricesRequested = true
-    void getPriceIndex().then((index) => {
-      if (index === null) return
-      prices = index
-      schedule()
-    })
-  }
 
   const unsubscribe = options.sessions.subscribe(schedule)
   const unsubscribeConfig = onSimplifyConfigChange(schedule)

@@ -129,10 +129,15 @@ export function estimateCost(pricing: TokenPrice | undefined, usage: {
   return Number.isFinite(cost) && cost >= 0 ? cost : undefined
 }
 
-/** 金额展示：小额用 4 位小数，避免全部显示成 $0.00。 */
+/**
+ * 金额展示。刻意不产出「$0」「$0.0000」这类噪声：
+ * - 免费模型或四舍五入后仍为 0 → 返回空串，由调用方直接不渲染金额；
+ * - 极小但非零 → 显示「<$0.0001」，表达「有花费但低于显示精度」。
+ */
 export function formatCost(usd: number): string {
   if (!Number.isFinite(usd) || usd < 0) return ''
-  if (usd === 0) return '$0'
+  if (usd === 0) return ''
+  if (usd < 0.0001) return '<$0.0001'
   if (usd < 0.01) return `$${usd.toFixed(4)}`
   if (usd < 1) return `$${usd.toFixed(3)}`
   return `$${usd.toFixed(2)}`
