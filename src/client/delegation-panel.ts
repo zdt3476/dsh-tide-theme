@@ -11,7 +11,20 @@
  */
 
 import { toDelegationNode, type DelegationNode, type SessionRow, type SessionRows } from './delegation-tree'
+import { formatCost, getPriceIndex, lookupPrice, estimateCost, type TokenPrice } from './model-pricing'
 import { loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
+
+/** token 数量的紧凑写法：1.2k / 3.4M，与宿主自身的展示口径一致。 */
+function formatTokenCount(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '0'
+  if (value < 1000) return String(Math.round(value))
+  if (value < 1_000_000) {
+    const scaled = value / 1000
+    return `${scaled >= 100 ? Math.round(scaled) : scaled.toFixed(1).replace(/\.0$/, '')}k`
+  }
+  const scaled = value / 1_000_000
+  return `${scaled >= 100 ? Math.round(scaled) : scaled.toFixed(1).replace(/\.0$/, '')}M`
+}
 
 const TURN = '[data-chat-turn]'
 const TOOL_ROW = '[data-tool]'
@@ -322,6 +335,9 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
   const userToggled = new WeakSet<HTMLElement>()
   const painters = new Map<HTMLElement, () => void>()
   const claimedByRow = new WeakMap<HTMLElement, string>()
+  // 价目表按需拉取：拿到后重绘一次，让已渲染的节点补上金额；拿不到就保持只显示 token。
+  let prices: Map<string, TokenPrice> | null = null
+  let pricesRequested = false
   let ticker: number | undefined
   let frame = 0
   let debug = false
@@ -407,6 +423,30 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
       const stepText = typeof stepRaw === 'function' ? (stepRaw as Function)({ count: node.steps }) : String(stepRaw)
       stepItem.append(stepIndicator, head(stepText, 'subagent-topology-node-steps'))
       checklist.append(stepItem)
+    }
+    // token 用量：四桶之和（与宿主的 tokens.total 同口径）。有价目时才追加预估金额，
+    // 查不到价就不显示金额，避免给出错误数字。
+    if (node.usage !== undefined) {
+      const usageItem = el('div', 'subagent-checklist-item is-usage')
+      const usageIndicator = icon(['M2 8h2', 'M6 5v6', 'M10 3v10', 'M14 6v4'], 10)
+      usageIndicator.setAttribute('aria-hidden', 'true')
+      const usageText = `${formatTokenCount(node.usage.totalTokens)} tokens`
+      const cost = estimateCost(node.usage === undefined ? undefined : lookupPrice(prices ?? new Map(), node.model ?? ''), node.usage)
+      const usageNode = head(usageText, 'subagent-topology-node-usage')
+      usageNode.title = [
+        `未命中缓存输入 ${node.usage.uncachedInputTokens.toLocaleString()}`,
+        `缓存读 ${node.usage.cacheReadTokens.toLocaleString()}`,
+        `缓存写 ${node.usage.cacheWriteTokens.toLocaleString()}`,
+        `输出 ${node.usage.outputTokens.toLocaleString()}`
+      ].join('\n')
+      usageItem.append(usageIndicator, usageNode)
+      if (cost !== undefined) {
+        const costText = formatCost(cost)
+        const costNode = head(costText, 'subagent-topology-node-cost')
+        costNode.title = `按 OpenRouter 公开单价估算：${costText}（仅供参考，不含分时优惠）`
+        usageItem.append(costNode)
+      }
+      checklist.append(usageItem)
     }
     if (member.reason !== undefined) {
       const failItem = el('div', 'subagent-checklist-item is-error')
@@ -694,7 +734,9 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
         parent.insertBefore(host, previous.nextSibling)
       }
       tailOf.set(holder, host)
-      const signature = JSON.stringify([index, members.map(({ node, reason }) => [{ ...node, durationMs: Math.round((node.durationMs ?? 0) / 1000) }, reason])])
+      // signature 决定何时重建节点内容：除批次与节点数据外，还要带上「价目是否已就绪」，
+      // 否则价目晚于首帧到达时金额不会补渲染（节点数据本身没变，签名相同会被跳过）。
+      const signature = JSON.stringify([index, prices === null ? 0 : 1, members.map(({ node, reason }) => [{ ...node, durationMs: Math.round((node.durationMs ?? 0) / 1000) }, reason])])
       if (host.dataset.signature !== signature) {
         host.dataset.signature = signature
         host.replaceChildren(batchView(members, index, host))
@@ -751,6 +793,17 @@ export function mountDelegationPanel(options: DelegationPanelOptions): Delegatio
     }
   }
   window.addEventListener('resize', repaintAll)
+
+  // 价目表懒加载：首次挂载就发起。拿到后走完整 sync 重建节点，金额才会出现——
+  // repaintAll 只重画连线，不重建节点内容。
+  if (!pricesRequested) {
+    pricesRequested = true
+    void getPriceIndex().then((index) => {
+      if (index === null) return
+      prices = index
+      schedule()
+    })
+  }
 
   const unsubscribe = options.sessions.subscribe(schedule)
   const unsubscribeConfig = onSimplifyConfigChange(schedule)

@@ -141,6 +141,7 @@ Tide Theme 为 DSH 提供深海潮汐蓝的表面体系、清晰的文字层级�
 
 - **弧形扇出连线**：SVG 按真实几何绘制——外侧分支从枢纽侧缘引出，内侧从底部引出，以贝塞尔曲线落到卡片顶边；有子代理运行时用 1px 语义色导线配合虚线流动表示活动，不加外发光。卡片换行时只画主干，避免连线穿过上一行卡片。
 - **横向 Agent 卡片阵列**：网格按可用容器宽度排布，每张卡片保留标题、模型、状态与实际步骤数；步骤数不代表已完成的任务清单。
+- **token 消耗与预估金额**：每张卡片显示该子代理的 token 用量（宿主四个互不重叠的用量桶之和），并在能查到单价时才追加预估金额。单价运行时从 [OpenRouter 公开模型目录](https://openrouter.ai/api/v1/models)拉取，按模型名归一化匹配（去供应商前缀、`.`/`_` 视同 `-`、容忍日期后缀）。四桶明细放在 `title` 里，便于核对口径。查不到单价就不显示金额，绝不编造数字；金额未处理 OpenRouter 的分时浮动定价，因此偏保守（偏高），仅供参考、不可用于计费。
 - **四色职能映射**：按标题关键词把子代理归到 Research（天青）/ Code（绿）/ Analyze（琥珀）/ 其它（蓝），图标以单色前景 + 同色低透明度底呈现，不整卡套艳色渐变；关闭主题材质后统一回落为中性图标。
 - **多轮次递增时序防冲突**：会话级单调递增编号（第 1 次委派、第 2 次委派…），配合行级粘性绑定（`claimedByRow`），杜绝跨轮次编号重置或盗用旧图。
 - **宁可缺省也不张冠李戴**：无法确定某个工具行对应哪个子会话时**不显示**该节点（失败或仍在排队的 `spawn_teammate` 调用不会凭空占位），而不是按顺序猜一个。未匹配的错误本身仍原样留在原生工具行里。
@@ -220,7 +221,7 @@ dsh plugin --profile desktop add git+https://github.com/zdt3476/dsh-tide-theme.g
 dsh plugin --profile desktop add link:"$PWD"
 
 # GitHub Release 预构建包
-dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/releases/download/v0.5.2/dsh-tide-theme-0.5.2.tgz
+dsh plugin --profile desktop add https://github.com/zdt3476/dsh-tide-theme/releases/download/v0.6.0/dsh-tide-theme-0.6.0.tgz
 ```
 
 安装后在 **设置 → 插件** 中启用，并按下 `Cmd/Ctrl + R` 重载客户端。
@@ -235,7 +236,7 @@ pnpm test        # TypeScript 类型检查 + Vitest 单元测试（110 tests）
 pnpm build       # 编译产出 lib/index.js (Host) 与 lib/client.js (Client)
 pnpm check       # test + build 全量流水线检查
 
-# 浏览器契约测试（真实 Chromium，56 项）
+# 浏览器契约测试（真实 Chromium，57 项）
 # 注意：必须逐个列出测试文件。tests/client/ 下还有 dock-stats-fixture.mjs 等夹具，
 # 用 glob 会把夹具当成测试文件从而误报失败。
 PLAYWRIGHT_MODULE=<playwright/index.mjs> CHROMIUM_EXECUTABLE=<chromium> \

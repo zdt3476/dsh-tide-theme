@@ -173,7 +173,7 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
   const cacheText = await page.locator('.dsh-tide-stat-item.is-cache .dsh-tide-hud-val').textContent()
   const durationText = await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-item-main').textContent()
 
-  assert.equal(activityText, '9 轮 / 126 步')
+  assert.equal(activityText, '9 轮 126 步')
   assert.equal(contextText, '121k / 500k (24%)')
   // 验证上下文颜色提示（<=50% 呈现 good 绿色）
   assert.equal(await page.locator('.dsh-tide-stat-item.is-context').getAttribute('data-dsh-tide-pct'), 'good')
@@ -218,7 +218,7 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
 
   // 检查会话活动与模型耗时拆解
   const footerText = await popover.locator('.dsh-tide-stats-footer').textContent()
-  assert.match(footerText, /9 轮 \/ 126 步/)
+  assert.match(footerText, /9 轮 126 步/)
   assert.match(footerText, /模型总耗时/)
   assert.match(footerText, /工具耗时/)
 
@@ -323,7 +323,7 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
   const trigger = page.locator('.dsh-tide-dock-stats-trigger')
 
   // 1. 验证平铺栏各项数据充足完整
-  assert.equal(await page.locator('.dsh-tide-stat-item.is-activity .dsh-tide-hud-val').textContent(), '85 轮 / 1979 步')
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-activity .dsh-tide-hud-val').textContent(), '85 轮 1979 步')
   assert.equal(await page.locator('.dsh-tide-stat-item.is-context .dsh-tide-hud-val').textContent(), '574k / 1M (55%)')
   // 验证上下文颜色提示（55% 呈 warn 橙黄色提醒）
   assert.equal(await page.locator('.dsh-tide-stat-item.is-context').getAttribute('data-dsh-tide-pct'), 'warn')
@@ -363,7 +363,7 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
 
   // 检查脚注
   const footerText = await popover.locator('.dsh-tide-stats-footer').textContent()
-  assert.match(footerText, /85 轮 \/ 1979 步/)
+  assert.match(footerText, /85 轮 1979 步/)
   assert.match(footerText, /模型总耗时 14 小时 56 分/)
   assert.match(footerText, /工具耗时 1 小时 32 分/)
 })
@@ -658,15 +658,15 @@ test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 
   })
 })
 
-// 展示策略：默认只显示模型名（避免标签过长被省略），仅在跨供应商重名时补前缀；
-// title 始终是完整「供应商 / 模型」，悬停可追溯来源。
+// 展示策略：始终显示「供应商 / 模型」——供应商是判断模型来源的必要信息。
+// 宽度不足时省略号作用在模型名尾部，供应商名位于最左侧始终可读；title 给完整名称。
 const modelLabelCases = [
-  { name: '唯一模型', expected: 'GPT-6', title: 'CPA / GPT-6', groups: [{ id: 'cpa', name: 'CPA', models: [{ id: 'gpt-6', name: 'GPT-6' }] }], current: { provider: 'cpa', model: 'gpt-6' } },
+  { name: '唯一模型', expected: 'CPA / GPT-6', title: 'CPA / GPT-6', groups: [{ id: 'cpa', name: 'CPA', models: [{ id: 'gpt-6', name: 'GPT-6' }] }], current: { provider: 'cpa', model: 'gpt-6' } },
   { name: '跨供应商同名模型', expected: 'OMC / GPT-6', title: 'OMC / GPT-6', groups: ['CPA', 'OMC'].map(name => ({ id: name.toLowerCase(), name, models: [{ id: 'gpt-6', name: 'GPT-6' }] })), current: { provider: 'omc', model: 'gpt-6' } },
-  { name: '目录缺失', expected: 'gpt-6', title: 'cpa / gpt-6', groups: [], current: { provider: 'cpa', model: 'gpt-6' }, status: 'loading' },
-  { name: '模型缺失', expected: 'gpt-6', title: 'CPA / gpt-6', groups: [{ id: 'cpa', name: 'CPA', models: [] }], current: { provider: 'cpa', model: 'gpt-6' } },
-  { name: '内置供应商本地化', expected: 'V3', title: 'DeepSeek 官方 / V3', groups: [{ id: 'deepseek-official', name: 'deepseek-official', models: [{ id: 'v3', name: 'V3' }] }], current: { provider: 'deepseek-official', model: 'v3' } },
-  { name: 'pending 优先于 current', expected: 'gpt-6', title: 'omc / gpt-6', groups: [], current: { provider: 'cpa', model: 'old' }, pending: { provider: 'omc', model: 'gpt-6' }, status: 'selecting' },
+  { name: '目录缺失', expected: 'cpa / gpt-6', title: 'cpa / gpt-6', groups: [], current: { provider: 'cpa', model: 'gpt-6' }, status: 'loading' },
+  { name: '模型缺失', expected: 'CPA / gpt-6', title: 'CPA / gpt-6', groups: [{ id: 'cpa', name: 'CPA', models: [] }], current: { provider: 'cpa', model: 'gpt-6' } },
+  { name: '内置供应商本地化', expected: 'DeepSeek 官方 / V3', title: 'DeepSeek 官方 / V3', groups: [{ id: 'deepseek-official', name: 'deepseek-official', models: [{ id: 'v3', name: 'V3' }] }], current: { provider: 'deepseek-official', model: 'v3' } },
+  { name: 'pending 优先于 current', expected: 'omc / gpt-6', title: 'omc / gpt-6', groups: [], current: { provider: 'cpa', model: 'old' }, pending: { provider: 'omc', model: 'gpt-6' }, status: 'selecting' },
   { name: '无选择占位', expected: '选择模型', title: '选择模型', groups: [], current: null }
 ]
 
@@ -740,9 +740,8 @@ test('模型 pill 不把常见「供应商 / 模型」标签截断（宽度上�
     }
   })
 
-  // 唯一供应商时只显示模型名；完整来源在 title 中。
-  assert.equal(result.text, 'Deepseek-V4.1-Flash')
-  assert.equal(result.truncated, false, '模型名不应被截断，否则与同行其他控件显得不协调')
+  assert.equal(result.text, 'WorkBuddy / Deepseek-V4.1-Flash')
+  assert.equal(result.truncated, false, '常见标签不应被截断，否则与同行其他控件显得不协调')
 })
 
 test('模型 pill 在窄容器下收缩而非把 composer 行撑出横向溢出', async (t) => {

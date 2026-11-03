@@ -55,14 +55,11 @@ export function createModelControl(props: ModelControlProps) {
     const name = displayName(groups, selection)
     const group = selection === null ? undefined : groups.find((candidate) => candidate.id === selection.provider)
     const providerLabel = group === undefined ? selection?.provider ?? '' : providerName(group.id, group.name)
-    // 展示策略：默认只显示模型名，避免「供应商 / 模型」把标签撑到被省略
-    // （WorkBuddy / DeepSeek-V4.1-Flash 约 246px，一截断就读不出模型）。
-    // 仅当同名模型确实分布在多个供应商下、必须靠前缀才能区分时才补上前缀；
-    // 完整名称始终留在 title 里，目录未加载时也不影响判断。
-    const duplicatedName = name !== '' &&
-      groups.filter((candidate) => candidate.models.some((model) => model.name === name)).length > 1
+    // 始终显示「供应商 / 模型」：供应商是判断模型来源的必要信息，不能为了宽度把它去掉。
+    // 宽度问题由 CSS 侧的 max-width 解决；真放不下时省略号作用在模型名尾部，
+    // 供应商名位于最左侧，始终可读。
     const fullLabel = name === '' ? t('model.placeholder') : `${providerLabel} / ${name}`
-    const modelLabel = name === '' ? t('model.placeholder') : duplicatedName ? fullLabel : name
+    const modelLabel = fullLabel
     const effort = effortLabel(groups, selection, t('effort.providerDefault'), state.retainedEffort)
     const busy = state.status === 'selecting' || state.status === 'loading'
 
@@ -132,10 +129,12 @@ export function createModelControl(props: ModelControlProps) {
         'data-dsh-tide-pill': '',
         'data-dsh-tide-control': kind,
         'data-dsh-tide-emphasis': kind,
-        // title 始终给完整「供应商 / 模型」：pill 上可能只显示模型名，悬停要能看到来源。
+        // title 与 aria-label 都给完整「供应商 / 模型」：pill 上被省略或读屏时都能拿到来源。
         title: kind === 'model' ? fullLabel : undefined,
         style: color === undefined ? undefined : { '--dsh-tide-provider-color': color },
-        'aria-label': kind === 'effort' ? `${t('effort.title')}：${effort ?? t('effort.unavailableShort')}` : undefined,
+        'aria-label': kind === 'model'
+          ? (name === '' ? t('model.placeholder') : `${t('model.title')}：${fullLabel}`)
+          : `${t('effort.title')}：${effort ?? t('effort.unavailableShort')}`,
         'aria-haspopup': 'dialog',
         'aria-expanded': open === kind ? 'true' : 'false',
         disabled: busy,

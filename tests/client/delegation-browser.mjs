@@ -558,3 +558,71 @@ test('子代理卡片宽度固定，单个与多个都保持与主 agent 协调�
     await page.close()
   }
 })
+
+test('子代理节点展示 token 消耗，并在拿到 OpenRouter 价目后补上预估金额', async (t) => {
+  const page = await browser.newPage()
+  t.after(() => page.close())
+  // 固定价目，避免测试依赖外网真实价格波动。
+  await page.route('**/openrouter.ai/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      data: [
+        { id: 'deepseek/deepseek-v4.1-flash', pricing: { prompt: '0.0000003', completion: '0.0000012', input_cache_read: '0.000000006' } }
+      ]
+    })
+  }))
+  await page.goto(`${origin}/fixture`)
+
+  await page.evaluate(async () => {
+    await import('/tests/client/dock-stats-fixture.mjs')
+    const { UI_CSS } = window.testFixture
+    const style = document.createElement('style')
+    style.textContent = UI_CSS
+    document.head.append(style)
+    const { mountDelegationPanel } = await import('/src/client/delegation-panel.ts')
+
+    const A = 'aaaaaaaa-1111-4111-8111-111111111111'
+    const B = 'bbbbbbbb-2222-4222-8222-222222222222'
+    // A 用可查到价目的模型；B 用 OpenRouter 没有的模型名，验证「查不到就不显示金额」。
+    const rows = {
+      [A]: { id: A, origin: 'subagent', parentId: 'session-a', running: false, displayTitle: 'Alpha',
+        projectionValues: { modelSelection: { model: 'DeepSeek-V4.1-Flash' }, sessionStats: { steps: 4 },
+          subagentTiming: { settledMs: 5000 },
+          tokenUsage: { uncachedInputTokens: 12000, cacheReadTokens: 340000, cacheWriteTokens: 8000, outputTokens: 42000 } } },
+      [B]: { id: B, origin: 'subagent', parentId: 'session-a', running: false, displayTitle: 'Beta',
+        projectionValues: { modelSelection: { model: 'unpriced-model-x' }, sessionStats: { steps: 2 },
+          subagentTiming: { settledMs: 3000 },
+          tokenUsage: { uncachedInputTokens: 5000, cacheReadTokens: 1000, outputTokens: 2000 } } }
+    }
+    const node = (key, id) => `<div data-chat-turn="turn-1" data-chat-node-key="${key}"><div data-tool="subagent" data-state="done">${id}</div></div>`
+    document.querySelector('#chat').innerHTML = `<div data-step-process data-chat-turn="turn-1">${node('one', A)}${node('two', B)}</div>`
+    window.fixture = { session: 'session-a', rows, listener: () => {}, opened: [] }
+    mountDelegationPanel({
+      sessions: { getSnapshot: () => ({ byId: rows }), subscribe: () => () => {} },
+      currentSessionId: () => 'session-a',
+      locale: (key) => key,
+      openSession: () => {}
+    })
+  })
+
+  // 批次默认折叠；展开后再断言可见内容。
+  await page.locator(summary).click()
+
+  // 价目晚于首帧到达，必须能补渲染出金额（signature 需体现价目就绪状态）。
+  await page.waitForSelector('.subagent-topology-node-cost', { state: 'visible', timeout: 8000 })
+
+  const usage = await page.locator('.subagent-topology-node-usage').allTextContents()
+  assert.deepEqual(usage, ['402k tokens', '8k tokens'])
+
+  const costs = await page.locator('.subagent-topology-node-cost').allTextContents()
+  // 402k tokens 按 prompt 3e-7 / completion 1.2e-6 / cacheRead 6e-9 计得约 $0.058。
+  assert.deepEqual(costs, ['$0.058'])
+
+  // 四桶明细放在 title 里，便于核对口径。
+  const detail = await page.locator('.subagent-topology-node-usage').first().getAttribute('title')
+  assert.match(detail, /未命中缓存输入 12,000/)
+  assert.match(detail, /缓存读 340,000/)
+  assert.match(detail, /缓存写 8,000/)
+  assert.match(detail, /输出 42,000/)
+})

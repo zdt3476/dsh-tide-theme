@@ -10,15 +10,30 @@ import { effortName } from './localize'
 
 export type DelegationStatus = 'running' | 'done' | 'failed' | 'denied' | 'unknown'
 
+/**
+ * 子代理的 token 用量。四个桶来自宿主 `tokenUsage` 投影，互不重叠，
+ * 相加即总用量（口径与宿主自身的「tokens.total」一致）。
+ */
+export interface DelegationUsage {
+  uncachedInputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
 export interface DelegationNode {
   id: string
   title: string
   model?: string
+  /** 供应商 id，用于匹配定价；宿主投影里有就带上。 */
+  provider?: string
   /** 思考等级展示名；目录没给名字时用 id 的中文映射。 */
   effort?: string
   status: DelegationStatus
   durationMs?: number
   steps?: number
+  usage?: DelegationUsage
 }
 
 /** 会话列表行的最小形状；宿主字段都是可选的，逐项防御。 */
@@ -34,6 +49,8 @@ export interface SessionRow {
     modelSelection?: { provider?: string; model?: string; reasoningEffort?: string } | { next?: { provider?: string; model?: string; reasoningEffort?: string } | null }
     sessionStats?: { steps?: number }
     subagentTiming?: { settledMs?: number; active?: { since?: number } }
+    /** 宿主持久化的提供方用量，四桶互不重叠。 */
+    tokenUsage?: Partial<DelegationUsage>
   }
 }
 
@@ -70,6 +87,15 @@ export function selectionModel(selection: { model?: string; next?: { model?: str
   return typeof model === 'string' && model !== '' ? model : undefined
 }
 
+/** 供应商 id：与模型名同样的扁平 / { next } 双形状兼容，用于匹配定价。 */
+export function selectionProvider(selection: { provider?: string; next?: { provider?: string } | null } | undefined): string | undefined {
+  if (selection === null || selection === undefined || typeof selection !== 'object') return undefined
+  const flat = selection as { provider?: unknown }
+  if (typeof flat.provider === 'string' && flat.provider !== '') return flat.provider
+  const provider = (selection as { next?: { provider?: unknown } | null }).next?.provider
+  return typeof provider === 'string' && provider !== '' ? provider : undefined
+}
+
 /** 思考等级：投影视图的 next.reasoningEffort，转成中文名。 */
 export function selectionEffort(selection: { reasoningEffort?: string; next?: { reasoningEffort?: string } | null } | undefined): string | undefined {
   const id = selection?.next?.reasoningEffort ?? selection?.reasoningEffort
@@ -78,10 +104,24 @@ export function selectionEffort(selection: { reasoningEffort?: string; next?: { 
 }
 
 /** 单个会话行 → 委派节点；不是子代理行时返回 null。 */
+/** 四桶求和；全为 0 或缺失时返回 undefined，避免渲染「0 tokens」噪声。 */
+export function delegationUsage(raw: Partial<DelegationUsage> | undefined): DelegationUsage | undefined {
+  if (raw === undefined || raw === null || typeof raw !== 'object') return undefined
+  const uncachedInputTokens = positive(raw.uncachedInputTokens) ?? 0
+  const cacheReadTokens = positive(raw.cacheReadTokens) ?? 0
+  const cacheWriteTokens = positive(raw.cacheWriteTokens) ?? 0
+  const outputTokens = positive(raw.outputTokens) ?? 0
+  const totalTokens = uncachedInputTokens + cacheReadTokens + cacheWriteTokens + outputTokens
+  if (totalTokens <= 0) return undefined
+  return { uncachedInputTokens, cacheReadTokens, cacheWriteTokens, outputTokens, totalTokens }
+}
+
 export function toDelegationNode(id: string, row: SessionRow | undefined, now: number): DelegationNode | null {
   if (row === undefined || row.origin !== 'subagent') return null
-  const model = selectionModel(row.projectionValues?.modelSelection)
-  const effort = selectionEffort(row.projectionValues?.modelSelection)
+  const selection = row.projectionValues?.modelSelection
+  const model = selectionModel(selection)
+  const effort = selectionEffort(selection)
+  const provider = selectionProvider(selection)
   const isRunning = row.running === true || positive(row.projectionValues?.subagentTiming?.active?.since) !== undefined
   const status: DelegationStatus = isRunning
     ? 'running'
@@ -92,6 +132,7 @@ export function toDelegationNode(id: string, row: SessionRow | undefined, now: n
     id,
     title: row.displayTitle ?? row.title ?? id,
     ...(model === undefined || model === '' ? {} : { model }),
+    ...(provider === undefined || provider === '' ? {} : { provider }),
     ...(effort === undefined ? {} : { effort }),
     status,
     ...((): { durationMs?: number } => {
@@ -101,6 +142,10 @@ export function toDelegationNode(id: string, row: SessionRow | undefined, now: n
     ...((): { steps?: number } => {
       const steps = positive(row.projectionValues?.sessionStats?.steps)
       return steps === undefined ? {} : { steps }
+    })(),
+    ...((): { usage?: DelegationUsage } => {
+      const usage = delegationUsage(row.projectionValues?.tokenUsage)
+      return usage === undefined ? {} : { usage }
     })()
   }
 }

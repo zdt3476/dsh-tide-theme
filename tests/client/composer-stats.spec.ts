@@ -278,7 +278,7 @@ describe('deriveComposerStats', () => {
       activity: {
         turns: 3,
         steps: 8,
-        label: '3 轮 · 8 步'
+        label: '3 轮 8 步'
       },
       context: {
         label: '50k / 200k (25%)',

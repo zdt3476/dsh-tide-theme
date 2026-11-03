@@ -1862,6 +1862,26 @@ body[data-dsh-tide-theme][data-ds-dark-theme] .subagent-topology-avatar.is-blue 
   color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 70%, var(--dsw-alias-label-primary));
 }
 
+/* token 用量与预估金额：数值用等宽数字并右对齐，金额比用量更弱一档，
+ * 让「实际消耗」和「换算金额」在视觉上分主次；两者都不抢状态角标的注意力。 */
+.subagent-checklist-item.is-usage {
+  align-items: center;
+  gap: 6px;
+}
+.subagent-topology-node-usage {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.subagent-topology-node-cost {
+  margin-left: 2px;
+  padding: 0 4px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-interactive-bg-subtle, var(--dsw-alias-interactive-bg-hover));
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
 .subagent-check-icon {
   flex: none;
   color: var(--dsw-alias-state-success-primary);
@@ -1940,7 +1960,8 @@ body[data-dsh-tide-theme][data-ds-dark-theme] .subagent-topology-avatar.is-blue 
 /* —— 回合耗时 —— */
 [data-dsh-tide-duration] {
   flex: none;
-  margin-left: 2px;
+  /* 文案已去掉前导「·」，靠外边距与前置操作按钮拉开呼吸，避免贴在一起。 */
+  margin-left: 8px;
   font-size: var(--dsh-content-font-size-secondary, 13px);
   font-variant-numeric: tabular-nums;
   color: var(--dsw-alias-label-tertiary);

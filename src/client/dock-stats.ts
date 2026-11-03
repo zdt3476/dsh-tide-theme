@@ -215,7 +215,7 @@ export function createDockStats(shared: DockShared) {
       items.push(block(
         'activity', 'is-activity',
         '会话规模',
-        iconUser, [number(model.activity.turns), unit(' 轮 / '), number(model.activity.steps), unit(' 步')]
+        iconUser, [number(model.activity.turns), unit(' 轮 '), number(model.activity.steps), unit(' 步')]
       ))
     }
 
@@ -397,8 +397,8 @@ export function createDockStats(shared: DockShared) {
 
       // 4. 会话活动与耗时拆解
       h('div', { className: 'dsh-tide-stats-footer' },
-        model.activity ? h('div', {}, `会话累计活动: ${model.activity.turns} 轮 / ${model.activity.steps} 步`) : null,
-        model.timingDetail ? h('div', {}, `模型总耗时 ${formatSimpleDuration(model.timingDetail.llmMs)}${model.timingDetail.toolMs > 0 ? ` / 工具耗时 ${formatSimpleDuration(model.timingDetail.toolMs)}` : ''}`) : null
+        model.activity ? h('div', {}, `会话累计活动: ${model.activity.turns} 轮 ${model.activity.steps} 步`) : null,
+        model.timingDetail ? h('div', {}, `模型总耗时 ${formatSimpleDuration(model.timingDetail.llmMs)}${model.timingDetail.toolMs > 0 ? `、工具耗时 ${formatSimpleDuration(model.timingDetail.toolMs)}` : ''}`) : null
       )
     ) : null
 
