@@ -353,7 +353,7 @@ export function deriveComposerStats(
       label: `${compactUsed} / ${compactWindow} (${capacity.usedPercent}%)`,
       level: capacity.level,
       bucket: capacity.bucket,
-      tooltip: `上下文容量: 已用 ${capacity.usedTokens.toLocaleString()} / 上限 ${capacity.contextWindow.toLocaleString()} (剩余 ${capacity.remainingTokens.toLocaleString()} tokens)${lastInput || lastCache || lastOut ? `\n最新单轮: 输入 ${formatCompactTokens(lastInput)} · 缓存读 ${formatCompactTokens(lastCache)} · 输出 ${formatCompactTokens(lastOut)}` : ''}`,
+      tooltip: `上下文容量: 已用 ${capacity.usedTokens.toLocaleString()} / 上限 ${capacity.contextWindow.toLocaleString()} (剩余 ${capacity.remainingTokens.toLocaleString()} tokens)${lastInput || lastCache || lastOut ? `\n最新单轮: 输入 ${formatCompactTokens(lastInput)} / 缓存读 ${formatCompactTokens(lastCache)} / 输出 ${formatCompactTokens(lastOut)}` : ''}`,
       breakdown: capacity.breakdown
     }
   }

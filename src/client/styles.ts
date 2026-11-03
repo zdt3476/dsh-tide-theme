@@ -2107,15 +2107,8 @@ body[data-dsh-tide-theme] [data-slot='sidebar.workspaces'] [data-row-key^='works
   gap: 2px;
 }
 
-/* 模型与思考等级之间的分隔点：两侧留出呼吸间隙，避免贴住按钮描边 */
-[data-dsh-tide-separator] {
-  flex: none;
-  padding: 0 4px;
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
-  line-height: 16px;
-  user-select: none;
-}
+/* 模型与思考等级两颗 pill 直接相邻，靠 [data-dsh-tide-seat] 的 gap 分隔，不再插『·』。
+ * 两颗 pill 之间的间距由容器 gap 提供，保持与原生 seat 一致的节奏。 */
 [data-dsh-tide-control='effort'] { flex: none; }
 /* 「供应商 / 模型」常见组合（如 WorkBuddy / Deepseek-V4.1-Flash）自然宽约 244px，
  * 240px 的上限会差 4px 触发省略号，让唯一的截断控件显得与同行其他控件不协调。

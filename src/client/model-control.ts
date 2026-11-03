@@ -55,7 +55,14 @@ export function createModelControl(props: ModelControlProps) {
     const name = displayName(groups, selection)
     const group = selection === null ? undefined : groups.find((candidate) => candidate.id === selection.provider)
     const providerLabel = group === undefined ? selection?.provider ?? '' : providerName(group.id, group.name)
-    const modelLabel = name === '' ? t('model.placeholder') : `${providerLabel} / ${name}`
+    // 展示策略：默认只显示模型名，避免「供应商 / 模型」把标签撑到被省略
+    // （WorkBuddy / DeepSeek-V4.1-Flash 约 246px，一截断就读不出模型）。
+    // 仅当同名模型确实分布在多个供应商下、必须靠前缀才能区分时才补上前缀；
+    // 完整名称始终留在 title 里，目录未加载时也不影响判断。
+    const duplicatedName = name !== '' &&
+      groups.filter((candidate) => candidate.models.some((model) => model.name === name)).length > 1
+    const fullLabel = name === '' ? t('model.placeholder') : `${providerLabel} / ${name}`
+    const modelLabel = name === '' ? t('model.placeholder') : duplicatedName ? fullLabel : name
     const effort = effortLabel(groups, selection, t('effort.providerDefault'), state.retainedEffort)
     const busy = state.status === 'selecting' || state.status === 'loading'
 
@@ -125,7 +132,8 @@ export function createModelControl(props: ModelControlProps) {
         'data-dsh-tide-pill': '',
         'data-dsh-tide-control': kind,
         'data-dsh-tide-emphasis': kind,
-        title: kind === 'model' ? modelLabel : undefined,
+        // title 始终给完整「供应商 / 模型」：pill 上可能只显示模型名，悬停要能看到来源。
+        title: kind === 'model' ? fullLabel : undefined,
         style: color === undefined ? undefined : { '--dsh-tide-provider-color': color },
         'aria-label': kind === 'effort' ? `${t('effort.title')}：${effort ?? t('effort.unavailableShort')}` : undefined,
         'aria-haspopup': 'dialog',
@@ -151,7 +159,8 @@ export function createModelControl(props: ModelControlProps) {
     const modelPill = pill('model', h('span', { 'data-dsh-tide-pill-label': '' }, modelLabel), providerIndex < 0 || group === undefined ? undefined : providerColor(group.id, providerIndex))
     const children: unknown[] = [modelPill]
 
-    children.push(h('span', { 'data-dsh-tide-separator': '', 'aria-hidden': 'true' }, '·'))
+    // 两颗 pill 之间不再插入「·」：宿主原生 seat 之间靠间距分隔，多一个符号会让
+    // 这一行比右侧原生控件更杂，还会白白吃掉模型名可用的宽度。
     children.push(pill('effort', h('span', { 'data-dsh-tide-pill-label': '' }, effort ?? t('effort.unavailableShort'))))
 
     let popupNode: unknown = null

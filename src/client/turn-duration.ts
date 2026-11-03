@@ -106,7 +106,7 @@ export function mountTurnDuration(options: TurnDurationOptions): TurnDurationMou
     startedAt.delete(sessionId)
     const elapsed = now() - start
     if (elapsed < MIN_VISIBLE_MS) return
-    const text = `· ${options.locale('duration.took')} ${formatTurnDuration(elapsed, options.locale)}`
+    const text = `${options.locale('duration.took')} ${formatTurnDuration(elapsed, options.locale)}`
     const pending = [...RETRY_DELAYS]
     const attempt = () => {
       if (paint(text) !== null) return
