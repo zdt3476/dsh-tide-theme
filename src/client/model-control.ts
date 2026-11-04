@@ -15,6 +15,13 @@ import { placePopup, measurePopup } from './popup'
 import { useDismiss } from './dock-shared'
 import { createPortal } from 'react-dom'
 import type { DockShared } from './dock-shared'
+import {
+  bindingViolated,
+  blockedProviders,
+  readBindings,
+  recordKnownProviders,
+  type ProviderBindings
+} from './provider-binding'
 
 export interface ModelControlProps {
   sessionId: string
@@ -24,6 +31,11 @@ export interface ModelControlProps {
   usage?: () => UsageRank
   /** 选择模型后记录一次本地使用，用于清理历史后仍保留排序。 */
   recordSelection?: (provider: string, model: string) => void
+  /**
+   * 当前会话所属工作区 id；undefined 表示无法判定（新会话尚未落盘等）。
+   * 绑定限制只在能确定工作区时生效，避免误把整个选择器锁死。
+   */
+  workspaceId?: () => string | undefined
 }
 
 export function createModelControl(props: ModelControlProps) {
@@ -37,8 +49,17 @@ export function createModelControl(props: ModelControlProps) {
       () => directory.store.getSnapshot()
     )
     // 挂载即拉目录：思考等级 pill 与供应商分组不依赖用户先点开弹层。
+    // 顺手把「见过的供应商」记下来，供设置页在没有会话时兜底展示。
     hooks.useEffect(() => {
-      directory.load().catch(() => {})
+      directory.load()
+        .then((snapshot) => {
+          recordKnownProviders(
+            (snapshot.groups ?? [])
+              .filter((group) => group.models.length > 0)
+              .map((group) => ({ id: group.id, name: group.name }))
+          )
+        })
+        .catch(() => {})
     }, [])
     const [open, setOpen] = hooks.useState<'none' | 'model' | 'effort'>('none')
     const [draftEffort, setDraftEffort] = hooks.useState<string | null>(null)
@@ -50,10 +71,34 @@ export function createModelControl(props: ModelControlProps) {
     const baseGroups: CatalogGroup[] = orderGroups(state.groups)
     // 面板打开时才聚合用量（避免每次渲染都扫全量会话），目录展示顺序按真实使用频率。
     const [usageRank, setUsageRank] = hooks.useState<UsageRank | null>(null)
-    const groups: CatalogGroup[] = usageRank === null ? baseGroups : rankCatalog(baseGroups, usageRank)
+    const rankedGroups: CatalogGroup[] = usageRank === null ? baseGroups : rankCatalog(baseGroups, usageRank)
+
+    // —— 供应商 ↔ 工作区绑定限制 ——
+    // 配置在 localStorage，组件挂载时读一次；同时订阅 storage 事件，
+    // 让用户在另一个标签页/设置页改完绑定后，这里无需重开面板即可生效。
+    const [bindings, setBindings] = hooks.useState<ProviderBindings>(() => readBindings())
+    hooks.useEffect(() => {
+      const sync = () => setBindings(readBindings())
+      window.addEventListener('storage', sync)
+      return () => window.removeEventListener('storage', sync)
+    }, [])
+    const workspaceId = props.workspaceId?.()
+    // null = 未配置任何绑定，全部允许。
+    // 注意：受限供应商**不从列表里剔除**，而是置灰并给出原因——用户需要知道
+    // 这个供应商确实存在、只是在本工作区不可用，否则会误以为它没配好或消失了。
+    const isBlocked = blockedProviders(bindings, workspaceId)
+    const blockedProvider = (id: string): boolean => isBlocked !== null && isBlocked(id)
+    // 全部目录原样展示（仍未按 allow 过滤），置灰只作用于交互层。
+    const groups: CatalogGroup[] = rankedGroups
+
     const selection: ModelSelection | null = state.pending ?? state.current
-    const name = displayName(groups, selection)
-    const group = selection === null ? undefined : groups.find((candidate) => candidate.id === selection.provider)
+    // 当前选中的供应商若被限制在本工作区之外，不自动切换（静默换模型副作用太大），
+    // 而是在 pill 与面板里显式标出来，由用户自己决定换哪个。
+    const violated = bindingViolated(bindings, selection?.provider, workspaceId)
+    // 名称与供应商标签一律从「未过滤」的完整目录里取：受限供应商虽不在可选列表里，
+    // 但当前会话可能正跑在它上面，pill 仍须如实显示名称而不是退化成一个 id。
+    const name = displayName(rankedGroups, selection)
+    const group = selection === null ? undefined : rankedGroups.find((candidate) => candidate.id === selection.provider)
     const providerLabel = group === undefined ? selection?.provider ?? '' : providerName(group.id, group.name)
     // 始终显示「供应商 / 模型」：供应商是判断模型来源的必要信息，不能为了宽度把它去掉。
     // 宽度问题由 CSS 侧的 max-width 解决；真放不下时省略号作用在模型名尾部，
@@ -113,6 +158,10 @@ export function createModelControl(props: ModelControlProps) {
     }
 
     const pickModel = (provider: string, model: string, meta?: import('./model-directory').ReasoningMeta) => {
+      // 兜底拦截：受限条目虽然渲染出来（置灰），但 disabled 只管住鼠标点击；
+      // 键盘、程序化触发或样式失效等路径仍可能到达这里，此时直接忽略，
+      // 绝不把受限供应商真正设进会话。
+      if (isBlocked !== null && isBlocked(provider)) return
       // 换模型保留原思考档位；目标模型不支持该档位时用它自己的默认档位。
       const nextEffort = retainEffort(meta, selection?.reasoningEffort)
       props.recordSelection?.(provider, model)
@@ -126,14 +175,19 @@ export function createModelControl(props: ModelControlProps) {
       close()
     }
 
+    // 受限供应商：pill 打上 data 标记供样式标红，并把原因写进 title / aria-label，
+    // 保证鼠标悬浮与读屏用户都能知道「为什么这个模型在本工作区不可选」。
+    const violationHint = t('model.bindingBlocked', { provider: providerLabel })
+
     const pill = (kind: 'model' | 'effort', label: unknown, color?: string) =>
       h('button', {
         type: 'button',
         'data-dsh-tide-pill': '',
         'data-dsh-tide-control': kind,
         'data-dsh-tide-emphasis': kind,
+        ...(kind === 'model' && violated ? { 'data-dsh-tide-binding-blocked': '' } : {}),
         // title 与 aria-label 都给完整「供应商 / 模型」：pill 上被省略或读屏时都能拿到来源。
-        title: kind === 'model' ? fullLabel : undefined,
+        title: kind === 'model' ? (violated ? `${fullLabel} · ${violationHint}` : fullLabel) : undefined,
         style: color === undefined ? undefined : { '--dsh-tide-provider-color': color },
         'aria-label': kind === 'model'
           ? (name === '' ? t('model.placeholder') : `${t('model.title')}：${fullLabel}`)
@@ -172,38 +226,56 @@ export function createModelControl(props: ModelControlProps) {
       const columns: unknown[] = []
       const visibleGroups = groups.filter((group) => group.models.length > 0)
       if (state.status === 'error' || state.error !== null) {
-        columns.push(h('div', { 'data-dsh-tide-note': '', 'data-dsh-tide-error': '' }, state.error ?? t('error.load')))
+        columns.push(h('div', { key: 'note-error', 'data-dsh-tide-note': '', 'data-dsh-tide-error': '' }, state.error ?? t('error.load')))
       }
       if (visibleGroups.length === 0 && state.status !== 'loading') {
-        columns.push(h('div', { 'data-dsh-tide-note': '' }, t('model.empty')))
+        columns.push(h('div', { key: 'note-empty', 'data-dsh-tide-note': '' }, t('model.empty')))
       }
+      // 目录非空、但本工作区把所有供应商都限制了：给一条明确提示。
+      // 注意必须放在列栅格之外（见下方 footer）：塞进 columns 会变成「第 0 列」，
+      // 挤占横向空间并把每列宽度从 260px 压到 223px，属于真实的布局缺陷。
+      const allBlocked = visibleGroups.length > 0 && visibleGroups.every((group) => blockedProvider(group.id))
       for (const [index, group] of visibleGroups.entries()) {
         const color = providerColor(group.id, index)
+        const blocked = blockedProvider(group.id)
         const models: unknown[] = []
         for (const model of group.models) {
           const active = selection !== null && selection.provider === group.id && selection.model === model.id
           const effortCount = model.reasoning?.efforts?.length ?? 0
           models.push(
+            // 受限供应商的模型仍然渲染出来，但 disabled 且标题说明原因：
+            // 让用户知道「它存在、只是这里用不了」，而不是以为它消失了。
             h('button', {
               type: 'button',
               'data-dsh-tide-item': '',
               'data-active': active ? 'true' : 'false',
+              ...(blocked ? { 'data-dsh-tide-item-blocked': '', disabled: true } : {}),
               style: { '--dsh-tide-provider-color': color },
               key: `m:${group.id}:${model.id}`,
+              title: blocked ? t('model.bindingBlocked', { provider: providerName(group.id, group.name) }) : undefined,
               onClick: () => pickModel(group.id, model.id, model.reasoning)
             },
             h('span', { style: { flex: 1, minWidth: 0 } }, model.name),
             effortCount > 1 ? h('span', { 'data-dsh-tide-badge': '' }, String(effortCount)) : null,
+            blocked ? h('span', { 'data-dsh-tide-lock': '', 'aria-hidden': 'true' }, '🔒') : null,
             active ? h('span', { 'data-dsh-tide-check': '', 'aria-hidden': 'true' }, '✓') : null
             )
           )
         }
         columns.push(
-          h('div', { 'data-dsh-tide-column': '', key: `g:${group.id}`, style: { '--dsh-tide-provider-color': color } },
+          h('div', {
+            'data-dsh-tide-column': '',
+            ...(blocked ? { 'data-dsh-tide-column-blocked': '' } : {}),
+            key: `g:${group.id}`,
+            style: { '--dsh-tide-provider-color': color }
+          },
             h('div', { 'data-dsh-tide-group': '' },
               h('span', { 'data-dsh-tide-provider-dot': '', 'aria-hidden': 'true' }),
               h('span', { 'data-dsh-tide-provider-name': '' }, providerName(group.id, group.name))
             ),
+            blocked
+              ? h('div', { 'data-dsh-tide-blocked-hint': '' }, t('model.bindingBlockedShort'))
+              : null,
             h('div', { 'data-dsh-tide-column-body': '' }, models)
           )
         )
@@ -219,7 +291,14 @@ export function createModelControl(props: ModelControlProps) {
         h('span', { 'data-dsh-tide-grid-title': '' }, t('model.title')),
         visibleGroups.length === 0 ? null : h('span', { 'data-dsh-tide-grid-hint': '' }, t('model.providers', { count: visibleGroups.length }))
       ),
-      h('div', { 'data-dsh-tide-grid-columns': '' }, columns))
+      h('div', { 'data-dsh-tide-grid-columns': '' }, columns),
+      allBlocked
+        ? h('div', {
+            key: 'note-all-blocked',
+            'data-dsh-tide-note': '',
+            'data-dsh-tide-binding-empty': ''
+          }, t('model.allBlocked'))
+        : null)
     }
 
     // 思考等级滑块：标题行给出当前档位，轨道带填充进度，刻度文字标出全部档位。
