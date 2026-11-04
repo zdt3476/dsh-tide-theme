@@ -40,7 +40,8 @@ export function useDismiss(sh: DockShared, onClose: () => void, active: boolean)
           target.closest('[data-dsh-tide-dock-root]') !== null ||
           target.closest('[data-dsh-tide-portal-root]') !== null ||
           target.closest('[data-dsh-tide-popup]') !== null ||
-          target.closest('[data-dsh-tide-stats-popover]') !== null
+          target.closest('[data-dsh-tide-stats-popover]') !== null ||
+          target.closest('[data-dsh-tide-workspace-control]') !== null
         ) {
           return
         }

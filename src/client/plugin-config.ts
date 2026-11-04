@@ -83,7 +83,7 @@ export function loadSimplifyConfig(): SimplifyConfig {
   }
 }
 
-/** 保存部分或全部配置更新，并向全局广播变更事件 */
+/** 保存部分或全部配置更新，并向全局广播变更事件；存储失败显式抛错，不伪装假成功 */
 export function saveSimplifyConfig(patch: Partial<SimplifyConfig>): SimplifyConfig {
   const current = loadSimplifyConfig()
   const next: SimplifyConfig = { ...current, ...patch }
@@ -91,7 +91,8 @@ export function saveSimplifyConfig(patch: Partial<SimplifyConfig>): SimplifyConf
     try {
       localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(next))
     } catch (e) {
-      console.warn('[dsh-tide-theme] 无法保存配置到 localStorage:', e)
+      console.error('[dsh-tide-theme] 无法保存配置到 localStorage:', e)
+      throw e
     }
   }
   if (typeof window !== 'undefined') {
@@ -105,7 +106,10 @@ export function resetSimplifyConfig(): SimplifyConfig {
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.removeItem(CONFIG_STORAGE_KEY)
-    } catch {}
+    } catch (e) {
+      console.error('[dsh-tide-theme] 无法清除 localStorage 配置:', e)
+      throw e
+    }
   }
   const next = { ...DEFAULT_SIMPLIFY_CONFIG }
   if (typeof window !== 'undefined') {

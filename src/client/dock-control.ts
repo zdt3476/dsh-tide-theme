@@ -26,18 +26,25 @@ export interface DockHostProps {
   shared: DockShared
   usage?: () => import('./usage-rank').UsageRank
   recordSelection?: (provider: string, model: string) => void
+  /** 当前会话所属工作区 id；undefined = 无法判定，此时绑定限制不生效。 */
+  workspaceId?: () => string | undefined
 }
 
 export function createDockControl(props: DockHostProps) {
   const stats = createDockStats(props.shared)
   const h = props.shared.h
 
-  // 底栏直接返回统计 Stats 组件，避免空左右配重与重复 derive 事实源。
+  // 底栏仅渲染居中的 Stats HUD，工作区会话快捷控制器收敛于侧栏专属面板
   return function DockControl(runtimeProps?: { useProjection?: (key: string) => unknown }) {
     const useProj = runtimeProps?.useProjection ?? props.useProjection
     const [config] = useSimplifyConfig(props.shared.hooks)
     if (!config.dockStats) return null
-    return h(stats as never, { useProjection: useProj })
+    return h('div', {
+      className: 'dsh-tide-dock-bar',
+      'data-dsh-tide-dock': ''
+    },
+      h(stats as never, { useProjection: useProj })
+    )
   }
 }
 
@@ -51,7 +58,8 @@ export function createModelSeat(props: DockHostProps) {
     directories: props.directories,
     shared: props.shared,
     usage: props.usage,
-    recordSelection: props.recordSelection
+    recordSelection: props.recordSelection,
+    workspaceId: props.workspaceId
   })
   const h = props.shared.h
   return function ModelSeat() {

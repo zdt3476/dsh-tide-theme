@@ -46,27 +46,17 @@ export function createDockStats(shared: DockShared) {
     const triggerRef = hooks.useRef<HTMLButtonElement | null>(null)
     const popupRef = hooks.useRef<HTMLDivElement | null>(null)
 
-    // 观察本轮最新耗时徽标（由 turn-duration.ts 挂在末轮操作行）
-    // 约束在当前会话容器或 composer-seat 共同父级内，避免多分屏跨分屏读错徽标
-    const [latestDuration, setLatestDuration] = hooks.useState<string | null>(null)
-    hooks.useEffect(() => {
-      const readDuration = () => {
-        const trigger = triggerRef.current
-        const seat = trigger?.closest('[data-composer-seat]')
-        const sessionContainer = trigger?.closest('[data-session-id], [data-session-pane], [data-pane-id], .split-pane') ??
-                                 seat?.parentElement ??
-                                 seat ??
-                                 document
-        const badges = sessionContainer.querySelectorAll<HTMLElement>('[data-dsh-tide-duration]')
-        const text = badges[badges.length - 1]?.textContent?.trim() || null
-        setLatestDuration(text)
-      }
-      readDuration()
-      const timer = window.setInterval(readDuration, 1000)
-      return () => window.clearInterval(timer)
-    }, [])
+    // 响应式读取线上传播的 subagentCatalog 投影，拒绝本地 DOM 抓取
+    const subagentsProj = props.useProjection?.('subagentCatalog') as any
+    const subagentEntries: any[] = Array.isArray(subagentsProj)
+      ? subagentsProj
+      : subagentsProj?.values?.subagentCatalog ?? []
+    const hasSubagents = subagentEntries.length > 0
+    const runningSubagents = subagentEntries.filter((s: any) => s.activity === 'running' || s.running === true).length
 
     const model = deriveComposerStats(stats, usage, pressure, undefined, breakdown)
+    // 宿主未在公共投影中暴露单轮真实耗时；显式置为 null，确保数据诚实展示为「模型累计总耗时」与「平均每轮耗时」
+    const latestDuration = null
 
     // 弹层水平居中于触发条；垂直方向浮窗边框紧贴触发条边框（无间隙）；
     // 顶部空间不足时改在触发栏下方弹出
@@ -266,6 +256,15 @@ export function createDockStats(shared: DockShared) {
         iconClock,
         [number(durationText)],
         { title: isTurn ? '本轮总耗时' : '模型累计总耗时' }
+      ))
+    }
+
+    // 6. 子代理委派状态（实时线上传播投影）
+    if (hasSubagents) {
+      items.push(block(
+        'subagents', 'is-subagent', '子代理', '🤖',
+        [number(String(subagentEntries.length)), unit(runningSubagents > 0 ? ` (${runningSubagents}跑)` : ' 个')],
+        { title: `${subagentEntries.length} 个子代理（${runningSubagents} 运行中）` }
       ))
     }
 

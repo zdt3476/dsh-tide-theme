@@ -9,8 +9,10 @@ const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')
 }
 
 const banner = `/** ${pkg.name} v${pkg.version} — ${pkg.description} */`
-/** 注入构建时间：便于确认运行中的到底是哪一版，重启后仍不对时可直接比对。 */
-const buildStamp = new Date().toISOString()
+/** 确定性构建标识：支持 SOURCE_DATE_EPOCH，无环境变量时固定为版本号，保证可复现构建无时间戳抖动。 */
+const buildStamp = process.env.SOURCE_DATE_EPOCH
+  ? `epoch-${process.env.SOURCE_DATE_EPOCH}`
+  : pkg.version
 
 export default defineConfig([
   {
