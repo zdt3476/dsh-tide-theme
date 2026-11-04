@@ -32,6 +32,8 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
   header.setAttribute('data-dsh-tide-sidebar-header', '')
   const host = options.createElement('div')
   host.dataset.dshTideFilterHost = ''
+  /** 无匹配结果时挂在筛选框下方的空态节点；有结果时为 null。 */
+  let emptyState: HTMLElement | null = null
   const tabs = header.parentElement?.querySelector('[data-dsh-tide-tabs-host]')
   ;(tabs ?? header).insertAdjacentElement('afterend', host)
 
@@ -73,9 +75,11 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
   let frame = 0
   const apply = () => {
     frame = 0
-    slot.toggleAttribute('data-dsh-tide-filtering', input.value.trim() !== '')
-    const hidden = computeHiddenRows(listRows(slot as Element).map(readRow), input.value)
-    for (const row of listRows(slot as Element)) {
+    const query = input.value.trim()
+    slot.toggleAttribute('data-dsh-tide-filtering', query !== '')
+    const rows = listRows(slot as Element)
+    const hidden = computeHiddenRows(rows.map(readRow), input.value)
+    for (const row of rows) {
       const key = row.getAttribute('data-row-key') ?? ''
       const hide = hidden.has(key)
       const next = hide ? 'none' : ''
@@ -83,6 +87,19 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
         row.setAttribute('data-dsh-tide-hidden', String(hide))
         ;(row as HTMLElement).style.display = next
       }
+    }
+
+    // 全部被滤掉时必须给出空态：否则侧栏整片留白，用户无法区分「没有匹配」
+    // 与「列表渲染失败」。
+    const empty = query !== '' && rows.length > 0 && hidden.size >= rows.length
+    if (empty && emptyState === null) {
+      emptyState = options.createElement('div')
+      emptyState.dataset.dshTideEmpty = ''
+      emptyState.textContent = options.locale('filter.noMatch')
+      host.insertAdjacentElement('afterend', emptyState)
+    } else if (!empty && emptyState !== null) {
+      emptyState.remove()
+      emptyState = null
     }
   }
   const schedule = () => {
@@ -105,6 +122,8 @@ export function mountSidebarFilter(options: SidebarFilterOptions): SidebarFilter
         ;(row as HTMLElement).style.display = ''
       }
       slot.removeAttribute('data-dsh-tide-filtering')
+      emptyState?.remove()
+      emptyState = null
       header.removeAttribute('data-dsh-tide-sidebar-header')
       nativeSearch?.removeAttribute('data-dsh-tide-native-filter')
       nativeOptions?.removeAttribute('data-dsh-tide-native-filter')

@@ -181,6 +181,19 @@ describe('client entry', () => {
     }))
   })
 
+  it('子代理派发图必须真实挂载：apply 必须注册 delegation effect 且能拿到会话数据流', () => {
+    // 回归：0.6.x 重构「零 DOM 篡改」时曾把 mountDelegationPanel 的调用整段删除，
+    // 导致配置开关、样式、README 都还在，但界面上的派发图彻底消失。
+    const { ctx, effects } = makeCtx()
+    apply(ctx)
+
+    const names = effects.map(effect => effect.name)
+    expect(names).toContain('tide-theme: delegation panel')
+
+    // effect 必须先能拿到 sessions 数据流，否则挂载器拿不到子代理快照。
+    expect(ctx.sessions?.list).toBeDefined()
+  })
+
   it('真正调用 apply 与配置事件完整生命周期：初始激活、切换关闭、重新开启、卸载清理', () => {
     const { ctx, overrideTokens, disposerFn, effects } = makeCtx()
     apply(ctx)

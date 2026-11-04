@@ -96,14 +96,26 @@ export function mountSidebarTabs(options: SidebarTabsOptions): Mount | null {
       setState({ active: filter })
     }
 
+    // WAI-ARIA tabs：外层 role=tablist，子项需 role=tab + aria-selected，
+    // 否则屏幕阅读器读不出当前处于哪一页。
+    const onKeyDown = (event: { key: string; preventDefault: () => void }) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      event.preventDefault()
+      pick(state.active === 'default' ? 'only' : 'default')
+    }
+
     const tab = (filter: ArchivedFilter, label: string) =>
       (createElement as (type: string, props: Record<string, unknown>, ...children: unknown[]) => unknown)(
         'button',
         {
           type: 'button',
+          role: 'tab',
+          'aria-selected': state.active === filter ? 'true' : 'false',
+          tabIndex: state.active === filter ? 0 : -1,
           'data-dsh-tide-tab': '',
           'data-active': state.active === filter ? 'true' : 'false',
-          onClick: () => pick(filter)
+          onClick: () => pick(filter),
+          onKeyDown
         },
         label
       )
