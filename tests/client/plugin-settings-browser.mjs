@@ -43,7 +43,7 @@ after(async () => {
   await server?.close()
 })
 
-test('插件设置页完整渲染5大模块与10项配置开关，支持即时切换与持久化', async (t) => {
+test('插件设置页保留未置顶上限，支持即时切换与持久化', async (t) => {
   const page = await browser.newPage()
   t.after(() => page.close())
   await page.goto(`${origin}/fixture`)
@@ -56,6 +56,7 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
     style.textContent = `
       :root {
         --dsw-alias-bg-base: #f9fafb;
+        --dsw-alias-bg-layer-1: #f3f4f6;
         --dsw-alias-bg-layer-2: #ffffff;
         --dsw-alias-border-l1: rgba(0, 0, 0, 0.08);
         --dsw-alias-border-l2: rgba(0, 0, 0, 0.15);
@@ -63,7 +64,10 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
         --dsw-alias-label-secondary: #4b5563;
         --dsw-alias-label-tertiary: #6b7280;
         --dsw-alias-state-success-primary: #16a34a;
+        --dsw-alias-state-success-label: #087443;
         --dsw-alias-state-success-subtle: rgba(22, 163, 74, 0.12);
+        --dsw-alias-state-error-primary: #dc2626;
+        --dsw-alias-state-error-label: #b42318;
         --dsw-alias-state-business-primary: #2563eb;
         --dsw-alias-interactive-bg-hover: rgba(0, 0, 0, 0.04);
         --dsw-alias-interactive-bg-subtle: rgba(0, 0, 0, 0.015);
@@ -97,17 +101,16 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   })
 
   await page.waitForSelector('[data-dsh-tide-settings]')
-  await page.screenshot({ path: '/tmp/plugin-settings.png' })
 
   // 1. 验证标题与分组结构
   const title = await page.locator('.dsh-tide-settings-title').textContent()
   assert.equal(title, '潮汐主题 · 主题与增强功能配置')
 
-  const groups = page.locator('.dsh-tide-settings-card')
+  const groups = page.locator('.dsh-tide-settings-groups > .dsh-tide-settings-card')
   assert.equal(await groups.count(), 5)
 
   // 验证各分组标题
-  const groupTitles = await page.locator('.dsh-tide-settings-group-title').allTextContents()
+  const groupTitles = await page.locator('.dsh-tide-settings-groups .dsh-tide-settings-group-title').allTextContents()
   assert.deepEqual(groupTitles, [
     '底栏用量与性能看板',
     '子代理协同派发图',
@@ -116,19 +119,17 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
     '潮汐主题'
   ])
 
-  // 2. 验证9个功能开关与2个数值步进器（共11项设置，已移除可视化无效的 permissionControl）
+  // 2. 验证 9 个功能开关，只保留未置顶上限步进器
   const switches = page.locator('.dsh-tide-switch')
   assert.equal(await switches.count(), 9)
   assert.equal(await switches.nth(0).getAttribute('data-active'), 'true')
   assert.equal(await switches.nth(3).getAttribute('data-active'), 'false') // delegationExpandedDefault
 
   const steppers = page.locator('.dsh-tide-stepper')
-  assert.equal(await steppers.count(), 2)
+  assert.equal(await steppers.count(), 1)
+  assert.equal(await page.locator('[data-dsh-tide-stepper="sidebarPinnedLimit"]').count(), 0)
 
-  // 验证初始数值显示
-  const pinnedStepper = page.locator('[data-dsh-tide-stepper="sidebarPinnedLimit"]')
   const unpinnedStepper = page.locator('[data-dsh-tide-stepper="sidebarUnpinnedLimit"]')
-  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
   assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
 
   // 3. 点击切换开关
@@ -136,9 +137,6 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   assert.equal(await switches.nth(0).getAttribute('data-active'), 'false')
 
   // 点击步进器调整数值
-  await pinnedStepper.locator('.is-inc').click() // 5 -> 6
-  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '6 个')
-
   await unpinnedStepper.locator('.is-dec').click() // 5 -> 4
   assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '4 个')
 
@@ -149,7 +147,7 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
   // 验证 localStorage 持久化内容
   const storedConfig = await page.evaluate(() => JSON.parse(localStorage.getItem('dsh.tide-theme.config')))
   assert.equal(storedConfig.dockStats, false)
-  assert.equal(storedConfig.sidebarPinnedLimit, 6)
+  assert.equal('sidebarPinnedLimit' in storedConfig, false)
   assert.equal(storedConfig.sidebarUnpinnedLimit, 4)
 
   // 4. 点击恢复全部默认设置
@@ -159,6 +157,35 @@ test('插件设置页完整渲染5大模块与10项配置开关，支持即时�
     return sw[0]?.getAttribute('data-active') === 'true'
   })
   assert.equal(await switches.nth(0).getAttribute('data-active'), 'true')
-  assert.equal(await pinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
   assert.equal(await unpinnedStepper.locator('.dsh-tide-stepper-val').textContent(), '5 个')
+
+  // 5. 暗色模式下关闭 themeOverrides（无 data-dsh-tide-theme），设置卡片仍应保留不透明背景与正常边框
+  const darkNativeCard = await page.evaluate(() => {
+    document.body.setAttribute('data-ds-dark-theme', '')
+    document.body.removeAttribute('data-dsh-tide-theme')
+    document.documentElement.style.setProperty('--dsw-alias-bg-layer-2', '#232529')
+    document.documentElement.style.setProperty('--dsw-alias-border-l1', 'rgba(255, 255, 255, 0.12)')
+    const card = document.querySelector('.dsh-tide-settings-card')
+    const s = getComputedStyle(card)
+    return { bg: s.backgroundColor, border: s.borderTopColor }
+  })
+  assert.equal(darkNativeCard.bg, 'rgb(35, 37, 41)', '暗色关闭主题时设置卡片不能透明退化')
+  assert.notEqual(darkNativeCard.border, 'rgb(15, 17, 21)', '暗色关闭主题时设置卡片边框不能退化为文字色')
+
+  // 6. 保存失败错误提示必须使用错误语义色而非绿色
+  const noticeColors = await page.evaluate(() => {
+    const ok = document.createElement('span')
+    ok.className = 'dsh-tide-settings-notice is-success'
+    ok.dataset.noticeType = 'success'
+    const err = document.createElement('span')
+    err.className = 'dsh-tide-settings-notice is-error'
+    err.dataset.noticeType = 'error'
+    document.body.append(ok, err)
+    const colors = { ok: getComputedStyle(ok).color, err: getComputedStyle(err).color }
+    ok.remove()
+    err.remove()
+    return colors
+  })
+  assert.equal(noticeColors.ok, 'rgb(8, 116, 67)')
+  assert.equal(noticeColors.err, 'rgb(180, 35, 24)')
 })

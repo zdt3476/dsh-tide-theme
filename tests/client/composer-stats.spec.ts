@@ -345,4 +345,15 @@ describe('deriveComposerStats', () => {
     expect(res.tokensDetail?.totalTokens).toBe(200000)
     expect(res.cache?.percent).toBe(67)
   })
+
+  it('缺测 TTFT 与纯解码速率返回 undefined 而非中文占位「无」', () => {
+    const res = deriveComposerStats({
+      turns: 1,
+      steps: 1,
+      decodeTokens: 200,
+      llmMs: 10000
+    })
+    expect(res.tps?.avgTtft).toBeUndefined()
+    expect(res.tps?.rawDecodeTps).toBeUndefined()
+  })
 })

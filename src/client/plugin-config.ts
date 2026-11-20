@@ -18,8 +18,6 @@ export interface SimplifyConfig {
   sidebarTabs: boolean
   /** 侧栏是否启用工作区分组与折叠控制 */
   sidebarGrouping: boolean
-  /** 侧栏置顶文件夹默认可见数量上限（默认 5） */
-  sidebarPinnedLimit: number
   /** 侧栏未置顶文件夹默认可见数量上限（默认 5） */
   sidebarUnpinnedLimit: number
   /** 输入框左下方是否启用模型与思考等级控件 */
@@ -28,7 +26,7 @@ export interface SimplifyConfig {
   permissionControl: boolean
   /** 是否在每轮回答尾部展示该轮总耗时徽标 */
   turnDuration: boolean
-  /** 是否启用潮汐主题材质（HUD / 看板浮窗 / 委派图的深海微透皮肤） */
+  /** 是否启用潮汐主题材质（中性蓝灰表面、清晰边界与有限浮层模糊） */
   themeOverrides: boolean
 }
 
@@ -39,7 +37,6 @@ export const DEFAULT_SIMPLIFY_CONFIG: Readonly<SimplifyConfig> = Object.freeze({
   delegationExpandedDefault: false,
   sidebarTabs: true,
   sidebarGrouping: true,
-  sidebarPinnedLimit: 5,
   sidebarUnpinnedLimit: 5,
   modelControl: true,
   permissionControl: true,
@@ -71,7 +68,6 @@ export function loadSimplifyConfig(): SimplifyConfig {
       delegationExpandedDefault: typeof parsed.delegationExpandedDefault === 'boolean' ? parsed.delegationExpandedDefault : DEFAULT_SIMPLIFY_CONFIG.delegationExpandedDefault,
       sidebarTabs: typeof parsed.sidebarTabs === 'boolean' ? parsed.sidebarTabs : DEFAULT_SIMPLIFY_CONFIG.sidebarTabs,
       sidebarGrouping: typeof parsed.sidebarGrouping === 'boolean' ? parsed.sidebarGrouping : DEFAULT_SIMPLIFY_CONFIG.sidebarGrouping,
-      sidebarPinnedLimit: parseLimit(parsed.sidebarPinnedLimit, DEFAULT_SIMPLIFY_CONFIG.sidebarPinnedLimit),
       sidebarUnpinnedLimit: parseLimit(parsed.sidebarUnpinnedLimit, DEFAULT_SIMPLIFY_CONFIG.sidebarUnpinnedLimit),
       modelControl: typeof parsed.modelControl === 'boolean' ? parsed.modelControl : DEFAULT_SIMPLIFY_CONFIG.modelControl,
       permissionControl: typeof parsed.permissionControl === 'boolean' ? parsed.permissionControl : DEFAULT_SIMPLIFY_CONFIG.permissionControl,

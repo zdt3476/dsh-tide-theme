@@ -21,6 +21,7 @@ before(async () => {
       name: 'test-page',
       configureServer(vite) {
         vite.middlewares.use(async (req, res, next) => {
+          if (req.url === '/favicon.ico') { res.statusCode = 204; res.end(); return }
           if (req.url !== '/fixture') return next()
           res.setHeader('Content-Type', 'text/html')
           const html = await vite.transformIndexHtml('/fixture', '<!doctype html><html><head></head><body><div id="mount"></div></body></html>')
@@ -44,7 +45,14 @@ after(async () => {
 
 test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并隐藏原生弹窗胶囊', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -156,9 +164,8 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
            getComputedStyle(ring).display === 'none'
   })
 
-  // 2. 平铺状态栏正确渲染并且内容准确充足（包含轮步、容量、真实TPS、缓存命中、单轮耗时）
+  // 2. 平铺状态栏正确渲染并且内容准确充足（包含轮步、容量、真实TPS、缓存命中、模型累计耗时）
   await page.waitForSelector('[data-dsh-tide-dock-center]')
-  await page.screenshot({ path: '/tmp/dock-stats-flat.png' })
   const trigger = page.locator('.dsh-tide-dock-stats-trigger')
   // 玻璃托盘的字号随视觉重构调过，这里只断言「可读且未退化为注释级小字」，不锁死具体像素；
   // 精确比例（读数 16px / 标签 11px / 轨道 3px）由 entry.spec 的 UI_CSS 契约守护。
@@ -183,9 +190,9 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
   assert.equal(await page.locator('.dsh-tide-stat-item.is-tps .dsh-tide-stat-label-text').textContent(), '平均 TPS')
   // 验证缓存命中率（percent-only 同步旧断言）
   assert.equal(cacheText, '99%')
-  // 验证单轮耗时（有本轮来源标“本轮耗时”）
-  assert.equal(await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-label-text').textContent(), '本轮耗时')
-  assert.equal(durationText, '4.2 秒')
+  // 验证模型累计耗时（不再做跨 DOM 抓取，诚实展示投影中的模型累计耗时）
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-duration .dsh-tide-stat-label-text').textContent(), '模型累计')
+  assert.equal(durationText, '1 小时 11 分')
 
   // 3. 点击平铺栏展开结构化看板浮层（Popover）
   assert.equal(await page.locator('[data-dsh-tide-stats-popover]').count(), 0)
@@ -193,7 +200,6 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
   await page.waitForSelector('[data-dsh-tide-stats-popover][style*="left"]')
   await page.waitForTimeout(100)
   const popover = page.locator('[data-dsh-tide-stats-popover]')
-  await page.screenshot({ path: '/tmp/dock-stats-popover.png' })
 
   // 验证 portal 真实挂载在 document.body 上（而非受限在 card 内部）
   assert.equal(await page.evaluate(() => document.querySelector('[data-dsh-tide-stats-popover]')?.parentElement === document.body), true)
@@ -229,7 +235,14 @@ test('底部栏平铺展示上下文、真实 TPS、缓存命中与耗时，并�
 
 test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUsage）完整渲染', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -370,7 +383,14 @@ test('真实会话复杂投影数据（高轮数、大上下文、平铺 tokenUs
 
 test('执行上下文压缩后，通过 projectedTokens 立即刷新平铺栏和看板数据', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -508,7 +528,8 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
     const projections = {
       sessionStats: { turns: 3, steps: 12, decodeTokens: 5000, llmMs: 12000 },
       tokenUsage: { uncachedInputTokens: 10000, cacheReadTokens: 40000, outputTokens: 5000 },
-      contextPressure: { pressureTokens: 50000, contextWindow: 200000 }
+      contextPressure: { pressureTokens: 50000, contextWindow: 200000 },
+      subagentCatalog: [{ id: 'sub-1', activity: 'running' }, { id: 'sub-2', activity: 'done' }]
     }
 
     const shared = { h: React.createElement, hooks: React, t: (k) => k }
@@ -521,9 +542,10 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
   const trigger = page.locator('.dsh-tide-dock-stats-trigger')
   assert.ok(await trigger.isVisible())
 
-  // 1. 验证 390px 容器正常显示且宽度受控
+  // 1. 验证 390px 容器正常显示且宽度受控，子代理项自动隐藏不造成溢出
   const triggerBox390 = await trigger.boundingBox()
   assert.ok(triggerBox390.width <= 390, `trigger width ${triggerBox390.width} exceeds container`)
+  assert.equal(await page.locator('.dsh-tide-stat-item.is-subagent').isVisible(), false)
 
   // 展开浮层验证短视口（height: 420）下的 bounds
   await trigger.click()
@@ -558,7 +580,14 @@ test('340px 与 390px 容器窄屏自适应响应、短视口 bounds 与浮层�
 
 test('真实调用 dockStats 开关与无投影 null 处理，验证原生 dock 与 align 变量恢复', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -701,7 +730,14 @@ for (const scenario of modelLabelCases) {
 
 test('模型 pill 不把常见「供应商 / 模型」标签截断（宽度上限回归）', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   const result = await page.evaluate(async () => {
@@ -746,7 +782,14 @@ test('模型 pill 不把常见「供应商 / 模型」标签截断（宽度上�
 
 test('模型 pill 在窄容器下收缩而非把 composer 行撑出横向溢出', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   const result = await page.evaluate(async () => {
@@ -923,9 +966,14 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
     `ModelControl 弹层应向上弹出: popup bottom (${modelPopup.y + modelPopup.height}) <= anchor y (${modelAnchor.y}) + 10`
   )
 
-  // 验证弹层真实 portal 挂载在 document.body 上，跳脱 card 的 backdrop-filter containing block
-  const isModelInBody = await page.evaluate(() => document.querySelector('[data-dsh-tide-model-grid]')?.parentElement === document.body)
-  assert.equal(isModelInBody, true)
+  // 验证弹层真实 portal 挂载在 document.body 上，跳脱 card 的 backdrop-filter containing block，并带可访问名称
+  const modelDialogMeta = await page.evaluate(() => {
+    const el = document.querySelector('[data-dsh-tide-model-grid]')
+    return { inBody: el?.parentElement === document.body, role: el?.getAttribute('role'), label: el?.getAttribute('aria-label') }
+  })
+  assert.equal(modelDialogMeta.inBody, true)
+  assert.equal(modelDialogMeta.role, 'dialog')
+  assert.ok(modelDialogMeta.label && modelDialogMeta.label.length > 0)
 
   // 验证点击模型浮层内部（标题/空白处）不触发关闭
   await page.locator('[data-dsh-tide-grid-title]').click()
@@ -953,9 +1001,14 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
     `EffortControl 弹层应向上弹出: popup bottom (${effortPopup.y + effortPopup.height}) <= anchor y (${effortAnchor.y}) + 10`
   )
 
-  // 验证思考等级弹层也真实 portal 挂载在 document.body 上
-  const isEffortInBody = await page.evaluate(() => document.querySelector('[data-dsh-tide-effort]')?.parentElement === document.body)
-  assert.equal(isEffortInBody, true)
+  // 验证思考等级弹层也真实 portal 挂载在 document.body 上并带可访问名称
+  const effortDialogMeta = await page.evaluate(() => {
+    const el = document.querySelector('[data-dsh-tide-effort]')
+    return { inBody: el?.parentElement === document.body, role: el?.getAttribute('role'), label: el?.getAttribute('aria-label') }
+  })
+  assert.equal(effortDialogMeta.inBody, true)
+  assert.equal(effortDialogMeta.role, 'dialog')
+  assert.ok(effortDialogMeta.label && effortDialogMeta.label.length > 0)
 
   // 点击思考等级弹层内部（标题/文字）不误触发关闭
   await page.locator('[data-dsh-tide-effort-title]').click()
@@ -969,7 +1022,14 @@ test('ModelControl 与 EffortControl 弹层真实使用 Portal 挂载到 body，
 
 test('关 themeOverrides 恢复原生全局表面', async (t) => {
   const page = await browser.newPage()
-  t.after(() => page.close())
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
   await page.goto(`${origin}/fixture`)
 
   await page.evaluate(async () => {
@@ -996,4 +1056,62 @@ test('关 themeOverrides 恢复原生全局表面', async (t) => {
     return loadSimplifyConfig().themeOverrides
   })
   assert.equal(updatedTheme, false)
+})
+
+test('看板浮层遵循 contextColorAlert 开关，且缓存缺测时不误标红', async (t) => {
+  const page = await browser.newPage()
+  const consoleErrors = []
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text())
+  })
+  t.after(async () => {
+    await page.close()
+    assert.deepEqual(consoleErrors, [], `页面不应输出 console error: ${consoleErrors.join(' | ')}`)
+  })
+  await page.goto(`${origin}/fixture`)
+
+  await page.evaluate(async () => {
+    await import('/tests/client/dock-stats-fixture.mjs')
+    const { React, ReactDOM, UI_CSS, createDockStats, saveSimplifyConfig } = window.testFixture
+    saveSimplifyConfig({ contextColorAlert: false })
+
+    const style = document.createElement('style')
+    style.textContent = UI_CSS
+    document.head.append(style)
+
+    const mount = document.getElementById('mount')
+    mount.innerHTML = '<div data-composer-seat><div data-composer-dock><div id="stats-mount"></div></div></div>'
+    const projections = {
+      sessionStats: { turns: 2, steps: 4, decodeTokens: 400, llmMs: 10000 },
+      contextPressure: { projectedTokens: 85000, contextWindow: 100000 }
+    }
+    const Stats = createDockStats({ h: React.createElement, hooks: React, t: (k) => k })
+    ReactDOM.createRoot(document.getElementById('stats-mount'))
+      .render(React.createElement(Stats, { useProjection: (k) => projections[k] }))
+  })
+
+  await page.waitForSelector('.dsh-tide-dock-stats-trigger')
+  await page.locator('.dsh-tide-dock-stats-trigger').click()
+  await page.waitForSelector('[data-dsh-tide-stats-popover]')
+
+  const state = await page.evaluate(() => {
+    const badge = document.querySelector('.dsh-tide-stats-popover-badge')
+    const bar = document.querySelector('.dsh-tide-stats-progress-fill')
+    const cards = [...document.querySelectorAll('.dsh-tide-stats-card')]
+    const cacheVal = cards[1]?.querySelector('.dsh-tide-stats-card-v')
+    const ttftVal = cards[2]?.querySelector('.dsh-tide-stats-card-v')
+    return {
+      badgeBucket: badge?.getAttribute('data-bucket'),
+      barBucket: bar?.getAttribute('data-bucket'),
+      cachePctAttr: cacheVal?.getAttribute('data-dsh-tide-pct'),
+      cacheText: cacheVal?.textContent,
+      ttftText: ttftVal?.textContent
+    }
+  })
+
+  assert.equal(state.badgeBucket, 'good', '关闭警戒变色时浮层徽标不应染成 bad')
+  assert.equal(state.barBucket, 'good', '关闭警戒变色时浮层进度条不应染成 bad')
+  assert.equal(state.cachePctAttr, null, '无缓存数据时不应标红')
+  assert.equal(state.cacheText, '暂无数据')
+  assert.equal(state.ttftText, '暂无数据')
 })

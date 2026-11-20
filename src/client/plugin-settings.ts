@@ -30,7 +30,6 @@ interface SettingItemSpec {
   min?: number
   max?: number
   unit?: string
-  zeroLabel?: string
 }
 
 interface SettingGroupSpec {
@@ -48,12 +47,12 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
       {
         key: 'dockStats',
         title: '底部平铺性能状态流',
-        description: '在底部输入栏中央平铺展示会话活动、上下文容量、实时端到端 TPS、缓存命中率与单轮耗时。'
+        description: '在底部输入栏中央展示会话规模、上下文容量、平均端到端 TPS、缓存命中率与模型累计耗时。'
       },
       {
         key: 'contextColorAlert',
         title: '上下文容量警戒变色',
-        description: '当上下文占用达到阈值时自动采用语义颜色提示（≤50% 安全绿、50%~75% 提醒橙、>75% 警戒红）。'
+        description: '当上下文占用达到阈值时自动采用语义颜色提示（≤50% 安全绿、51%~75% 提醒橙、>75% 警戒红）。'
       }
     ]
   },
@@ -79,28 +78,18 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
     items: [
       {
         key: 'sidebarTabs',
-        title: '侧栏未归档/归档分页与筛选',
-        description: '在侧栏顶部提供“未归档 / 归档”双标签分页，并内置实时输入筛选框。'
+        title: '侧栏未归档 / 已归档分页与筛选',
+        description: '在侧栏顶部提供「未归档 / 已归档」双标签分页，并内置实时输入筛选框。'
       },
       {
         key: 'sidebarGrouping',
         title: '工作区按分组管理与折叠',
-        description: '支持工作区会话分组折叠、置顶会话与批量管理功能。'
-      },
-      {
-        key: 'sidebarPinnedLimit',
-        title: '置顶文件夹显示上限',
-        description: '折叠状态下允许常驻显示的置顶文件夹数量，超出部分收纳进“更多”（设为 0 表示不限制，全部常驻）。',
-        type: 'number',
-        min: 0,
-        max: 20,
-        unit: '个',
-        zeroLabel: '不限制'
+        description: '支持按活跃度排序、工作区置顶（行内三点菜单）与列表折叠；折叠时所有置顶工作区仍会显示。'
       },
       {
         key: 'sidebarUnpinnedLimit',
-        title: '未置顶文件夹显示上限',
-        description: '折叠状态下允许显示的普通文件夹数量，超出部分收纳进“更多”。',
+        title: '未置顶工作区显示上限',
+        description: '折叠状态下允许显示的未置顶工作区数量，超出部分可点击底部展开按钮查看。',
         type: 'number',
         min: 1,
         max: 30,
@@ -131,7 +120,7 @@ const SETTING_GROUPS: SettingGroupSpec[] = [
       {
         key: 'themeOverrides',
         title: '潮汐主题材质',
-        description: '为底栏 HUD、用量看板与委派图套用潮汐主题材质（深海微透质感、精密发丝描边与自然漫反射柔影）；关闭此项后这些组件回落到 DSH 原生外观。'
+        description: '启用插件配套的中性蓝灰表面、清晰边界、短阴影与语义状态色（仅菜单与看板浮层保留轻微模糊）；关闭后完整回落到 DSH 原生外观。'
       }
     ]
   }
@@ -161,7 +150,7 @@ export function createPluginSettings(input: DockShared | PluginSettingsOptions) 
       return h('span', {
         className: 'dsh-tide-settings-summary',
         'data-dsh-tide-summary': ''
-      }, t('settings.summary') || '潮汐主题 · 深海微透材质、底栏性能HUD看板与子代理状态增强')
+      }, t('settings.summary') || '潮汐主题 · 中性蓝灰表面、底栏性能 HUD 看板与子代理委派图增强')
     }
 
     const [config, updateConfig] = useSimplifyConfig(hooks)
@@ -388,7 +377,7 @@ export function createPluginSettings(input: DockShared | PluginSettingsOptions) 
         h('div', { className: 'dsh-tide-settings-group-title' }, '供应商可用范围'),
         h('div', { className: 'dsh-tide-binding-body' },
           h('div', { className: 'dsh-tide-settings-hint' },
-            '默认所有供应商在任何工作区都可用。为某个供应商勾选工作区后，它只在这些工作区可选；在其它工作区里它仍会显示在模型面板中，但置灰并标注「本工作区不可用」。已选中的会话不会被自动切换，只在选择器上标红提示。'),
+            '默认所有供应商在任何工作区都可用。为某个供应商勾选工作区后，它只在这些工作区可选；在其它工作区里它仍会显示在模型面板中，但置灰并标注「本工作区不可用」。已选中的会话不会被自动切换，只在选择器上标黄警示。'),
           body
         )
       )
@@ -418,7 +407,7 @@ export function createPluginSettings(input: DockShared | PluginSettingsOptions) 
           h('span', { className: 'dsh-tide-settings-badge' }, '即时生效')
         ),
         h('p', { className: 'dsh-tide-settings-desc' },
-          '可视化切换各项界面增强与显示模块。主题材质开启时套用潮汐深海皮肤，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
+          '可视化切换各项界面增强与显示模块。主题材质开启时套用潮汐主题表面与配色，关闭后回落到 DSH 原生外观；所有设置实时保存在本地。'
         )
       ),
 
@@ -440,7 +429,7 @@ export function createPluginSettings(input: DockShared | PluginSettingsOptions) 
                   const num = typeof config[item.key] === 'number' ? (config[item.key] as number) : 5
                   const min = item.min ?? 0
                   const max = item.max ?? 50
-                  const displayVal = num === 0 && item.zeroLabel ? item.zeroLabel : `${num} ${item.unit ?? ''}`
+                  const displayVal = item.unit ? `${num} ${item.unit}` : String(num)
 
                   return h('div', {
                     key: item.key,

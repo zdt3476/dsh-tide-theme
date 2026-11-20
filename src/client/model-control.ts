@@ -281,6 +281,9 @@ export function createModelControl(props: ModelControlProps) {
         )
       }
       popupNode = h('div', {
+        role: 'dialog',
+        'aria-modal': 'false',
+        'aria-label': t('model.title'),
         'data-dsh-tide-popup': '',
         'data-dsh-tide-portal-root': '',
         'data-dsh-tide-model-grid': '',
@@ -307,6 +310,9 @@ export function createModelControl(props: ModelControlProps) {
       const levels = effortLevels(meta, t('effort.providerDefault'))
       if (levels.length === 0) {
         popupNode = h('div', {
+          role: 'dialog',
+          'aria-modal': 'false',
+          'aria-label': t('effort.title'),
           'data-dsh-tide-popup': '',
           'data-dsh-tide-portal-root': '',
           ref: (el: HTMLElement | null) => { popupRef.current = el },
@@ -318,6 +324,9 @@ export function createModelControl(props: ModelControlProps) {
         const index = draftIndex >= 0 ? draftIndex : Math.max(0, levels.findIndex((level) => level.id === currentId))
         const fill = levels.length > 1 ? (index / (levels.length - 1)) * 100 : 100
         popupNode = h('div', {
+          role: 'dialog',
+          'aria-modal': 'false',
+          'aria-label': t('effort.title'),
           'data-dsh-tide-popup': '',
           'data-dsh-tide-portal-root': '',
           'data-dsh-tide-effort': '',

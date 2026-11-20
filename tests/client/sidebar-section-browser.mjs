@@ -43,7 +43,7 @@ after(async () => {
   await server?.close()
 })
 
-test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标头正确位于列表内部，不飘在最上方', async (t) => {
+test('侧栏折叠时保留六个置顶工作区，置顶与普通分区仍在列表内', async (t) => {
   const page = await browser.newPage()
   t.after(() => page.close())
   await page.goto(`${origin}/fixture`)
@@ -86,10 +86,10 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
     `
     document.head.append(style)
 
-    // 设置置顶持久化项（4 个工作区置顶）
     localStorage.setItem('dsh-tide-theme.pinned-workspaces', JSON.stringify([
-      'default', 'dsh-tide-theme', 'web-dashboard', 'api-service'
+      'default', 'dsh-tide-theme', 'web-dashboard', 'api-service', 'docs', 'design'
     ]))
+    localStorage.setItem('dsh.tide-theme.config', JSON.stringify({ sidebarPinnedLimit: 5, sidebarUnpinnedLimit: 1 }))
 
     // 模拟 DSH 真实侧栏 DOM 结构
     const mount = document.getElementById('mount')
@@ -117,6 +117,8 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
           <div><span><div data-row-key="workspace:dsh-tide-theme" style="padding:6px 8px; font-size:13px;">📁 dsh-tide-theme</div></span></div>
           <div><span><div data-row-key="workspace:web-dashboard" style="padding:6px 8px; font-size:13px;">📁 web-dashboard</div></span></div>
           <div><span><div data-row-key="workspace:api-service" style="padding:6px 8px; font-size:13px;">📁 api-service</div></span></div>
+          <div><span><div data-row-key="workspace:docs" style="padding:6px 8px; font-size:13px;">📁 docs</div></span></div>
+          <div><span><div data-row-key="workspace:design" style="padding:6px 8px; font-size:13px;">📁 design</div></span></div>
           <div><span><div data-row-key="workspace:server" style="padding:6px 8px; font-size:13px;">📁 server</div></span></div>
           <div><span><div data-row-key="workspace:code" style="padding:6px 8px; font-size:13px;">📁 code</div></span></div>
         </div>
@@ -128,6 +130,8 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
       { workspaceId: 'dsh-tide-theme', sessionIds: [] },
       { workspaceId: 'web-dashboard', sessionIds: [] },
       { workspaceId: 'api-service', sessionIds: [] },
+      { workspaceId: 'docs', sessionIds: [] },
+      { workspaceId: 'design', sessionIds: [] },
       { workspaceId: 'server', sessionIds: [] },
       { workspaceId: 'code', sessionIds: [] }
     ]
@@ -151,7 +155,6 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
   })
 
   await page.waitForSelector('[data-dsh-tide-section="pinned"]')
-  await page.screenshot({ path: '/tmp/sidebar-sections.png' })
 
   // 1. 验证小节标头正确插入在列表容器内，而不是在搜索框或Tabs上方
   const pinnedHeader = page.locator('[data-dsh-tide-section="pinned"]')
@@ -170,8 +173,18 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
   assert.equal(inListContainer, true)
 
   // 2. 检查标头文案与数量
-  assert.match(await pinnedHeader.textContent(), /置顶\s*4/)
+  assert.match(await pinnedHeader.textContent(), /置顶\s*6/)
   assert.match(await unpinnedHeader.textContent(), /工作区\s*2/)
+
+  // 旧版置顶上限不再生效，折叠按钮只统计未置顶的隐藏项。
+  assert.equal(await page.locator('[data-dsh-tide-pinned]:visible').count(), 6)
+  const collapsedGroups = page.locator('[data-dsh-tide-collapsed]')
+  assert.deepEqual(await collapsedGroups.evaluateAll(groups => groups.map(group => group.dataset.dshTideGroup)), ['code'])
+  const toggle = page.locator('[data-dsh-tide-groups-toggle]')
+  assert.equal(await toggle.textContent(), '还有 1 个工作区')
+  await toggle.click()
+  await collapsedGroups.first().waitFor({ state: 'detached' })
+  assert.equal(await toggle.textContent(), '收起工作区')
 
   // 3. 检查几何位置：pinnedHeader 在 input 搜索框下方！
   const inputY = await page.locator('input').evaluate(el => el.getBoundingClientRect().bottom)
@@ -199,7 +212,7 @@ test('侧栏独立小节分区分组（方案A）：置顶标头与工作区标�
   const unpinnedHeaderTop = await unpinnedHeader.evaluate((el) => el.getBoundingClientRect().top)
   const pinnedRows = order.rows.filter((row) => row.pinned)
   const unpinnedRows = order.rows.filter((row) => !row.pinned)
-  assert.equal(pinnedRows.length, 4, '应有 4 个置顶工作区')
+  assert.equal(pinnedRows.length, 6, '应有 6 个置顶工作区')
   assert.equal(unpinnedRows.length, 2, '应有 2 个普通工作区')
   for (const row of pinnedRows) {
     assert.ok(row.top < unpinnedHeaderTop, `置顶工作区 ${row.id} 必须位于未置顶小节标题之上`)

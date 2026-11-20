@@ -1,9 +1,9 @@
 /**
  * 侧栏工作区列表的渐进披露：活跃排序、折叠、置顶、会话数徽标。
  *
- * DSH 没有工作区级的 pin，也没有「只显示前 N 个工作区」的开关，所以全部在
+ * DSH 没有工作区级的 pin；折叠时只限制未置顶工作区，因此全部在
  * DOM 层做（与 tabs/筛选同一套注入策略）：
- *   - 折叠：给超出 N 的组打 `data-dsh-tide-collapsed`，样式表负责隐藏；
+ *   - 折叠：给未置顶且超出可见上限的组打 `data-dsh-tide-collapsed`，样式表负责隐藏；
  *   - 置顶：给组打 `data-dsh-tide-pinned`，列表容器改 flex column 后用 order 提前；
  *   - 徽标：把会话数写进工作区行的属性，样式表用 ::after + attr() 渲染。
  * 原生拖拽/动画继续按自己的节点工作，我们只改属性与顺序，不动 DOM 结构。
@@ -12,11 +12,10 @@
 import type { ArchivedFilter } from './view-state'
 import { orderWorkspaceGroups, workspaceActivity } from './sidebar-activity'
 import type { ActivityStore, SessionActivitySnapshot, WorkspaceActivitySnapshot } from './sidebar-activity'
-import { loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
+import { DEFAULT_SIMPLIFY_CONFIG, loadSimplifyConfig, onSimplifyConfigChange } from './plugin-config'
 
 export const PINNED_KEY = 'dsh-tide-theme.pinned-workspaces'
 export const EXPANDED_KEY = 'dsh-tide-theme.workspaces-expanded'
-export const COLLAPSED_LIMIT = 5
 
 export interface GroupInfo {
   id: string
@@ -34,25 +33,16 @@ export function parsePinned(raw: string | null): string[] {
   }
 }
 
-/**
- * 折叠后应保持可见的组：
- * - unpinnedLimit: 未置顶文件夹可见数量上限（默认 5）
- * - pinnedLimit: 置顶文件夹可见数量上限（默认 5；若 <= 0 则全部置顶可见）
- */
+/** 折叠时保留全部置顶组，以及排在前面的未置顶组。 */
 export function visibleGroupIds(
   groups: readonly GroupInfo[],
-  unpinnedLimit = COLLAPSED_LIMIT,
-  pinnedLimit = 5
+  unpinnedLimit = DEFAULT_SIMPLIFY_CONFIG.sidebarUnpinnedLimit
 ): Set<string> {
   const visible = new Set<string>()
   let ordinary = 0
-  let pinned = 0
   for (const group of groups) {
     if (group.pinned) {
-      if (pinnedLimit <= 0 || pinned < pinnedLimit) {
-        visible.add(group.id)
-        pinned += 1
-      }
+      visible.add(group.id)
       continue
     }
     if (ordinary < unpinnedLimit) {
@@ -66,10 +56,9 @@ export function visibleGroupIds(
 /** 折叠按钮文案：还有多少个组被收起。 */
 export function hiddenCount(
   groups: readonly GroupInfo[],
-  unpinnedLimit = COLLAPSED_LIMIT,
-  pinnedLimit = 5
+  unpinnedLimit = DEFAULT_SIMPLIFY_CONFIG.sidebarUnpinnedLimit
 ): number {
-  const visible = visibleGroupIds(groups, unpinnedLimit, pinnedLimit)
+  const visible = visibleGroupIds(groups, unpinnedLimit)
   return groups.filter((group) => !visible.has(group.id)).length
 }
 
@@ -297,7 +286,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
     const workspace = options.workspaces.getSnapshot()
     const activity = workspaceActivity(workspace.items, options.sessions.getSnapshot().byId, workspace.archivedSessionIds, archived)
     const ranked = orderWorkspaceGroups(groups.map(group => ({ ...group, pinned: pinned.has(group.id) })), activity)
-    const visible = visibleGroupIds(ranked, config.sidebarUnpinnedLimit, config.sidebarPinnedLimit)
+    const visible = visibleGroupIds(ranked, config.sidebarUnpinnedLimit)
 
     const listContainer = groups[0]?.element.parentElement ?? null
     if (listContainer !== null) {
@@ -305,8 +294,7 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       if (unpinnedHeader.parentElement !== listContainer) listContainer.appendChild(unpinnedHeader)
     }
 
-    const pinnedGroupIds = new Set(groups.filter(g => pinned.has(g.id)).map(g => g.id))
-    const pinnedCount = pinnedGroupIds.size
+    const pinnedCount = groups.reduce((count, group) => count + (pinned.has(group.id) ? 1 : 0), 0)
     const unpinnedCount = ranked.length - pinnedCount
 
     if (pinnedCount > 0) {
@@ -336,11 +324,9 @@ export function mountSidebarGroups(options: SidebarGroupsOptions): SidebarGroups
       if (!originalOrders.has(group.element)) originalOrders.set(group.element, group.element.style.order)
       group.element.style.order = String((index - ranked.length) * 2)
       group.element.toggleAttribute('data-dsh-tide-collapsed', collapse && !visible.has(group.id))
-      const isPinned = pinnedGroupIds.has(group.id)
-      group.element.toggleAttribute('data-dsh-tide-pinned', isPinned)
     }
 
-    const hidden = hiddenCount(ranked, config.sidebarUnpinnedLimit, config.sidebarPinnedLimit)
+    const hidden = ranked.length - visible.size
     toggle.hidden = hidden === 0 && !expanded
     const label = expanded
       ? options.locale('groups.collapse')

@@ -364,17 +364,17 @@ export function deriveComposerStats(
   if (tpsVal !== null && stats) {
     const avgTtft = stats.ttftSteps && stats.ttftSteps > 0
       ? `${(stats.ttftMs! / stats.ttftSteps / 1000).toFixed(1)}s`
-      : '无'
+      : undefined
     const rawTps = stats.decodeMs && stats.decodeMs > 0 && stats.decodeTokens
       ? `${(stats.decodeTokens / (stats.decodeMs / 1000)).toFixed(1)} t/s`
-      : '无'
+      : undefined
 
     tpsView = {
       value: tpsVal,
       label: `${tpsVal} t/s`,
       rawDecodeTps: rawTps,
       avgTtft,
-      tooltip: `端到端生成速率（含首字延迟/思考等待）\n会话总产出: ${(stats.decodeTokens ?? 0).toLocaleString()} tokens\n平均首字延迟: ${avgTtft}\n纯流式吐字速率: ${rawTps}`
+      tooltip: `端到端生成速率（含首字延迟/思考等待）\n会话总产出: ${(stats.decodeTokens ?? 0).toLocaleString()} tokens\n平均首字延迟: ${avgTtft ?? '暂无数据'}\n纯流式吐字速率: ${rawTps ?? '暂无数据'}`
     }
   }
 

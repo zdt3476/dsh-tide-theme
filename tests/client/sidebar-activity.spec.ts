@@ -35,29 +35,16 @@ describe('workspace activity', () => {
     expect(orderWorkspaceGroups(groups, new Map()).map(group => group.id)).toEqual(['pin', 'old', 'new', 'tie'])
   })
 
-  it('支持根据 unpinnedLimit 和 pinnedLimit 独立限制折叠可见数量', () => {
-    const groups = [
-      { id: 'p1', pinned: true },
-      { id: 'p2', pinned: true },
-      { id: 'p3', pinned: true },
-      { id: 'u1', pinned: false },
-      { id: 'u2', pinned: false },
-      { id: 'u3', pinned: false },
-      { id: 'u4', pinned: false }
-    ]
+  it('折叠时保留所有置顶工作区，只对普通工作区应用上限', () => {
+    const pinned = Array.from({ length: 7 }, (_, i) => ({ id: `p${i + 1}`, pinned: true }))
+    const unpinned = Array.from({ length: 6 }, (_, i) => ({ id: `u${i + 1}`, pinned: false }))
+    const groups = [...pinned, ...unpinned]
+    const pinnedIds = pinned.map(group => group.id)
 
-    // 默认：最多 5 个置顶，最多 5 个未置顶（全部 7 个均可见）
-    expect(visibleGroupIds(groups).size).toBe(7)
-    expect(hiddenCount(groups)).toBe(0)
-
-    // 置顶限制为 2，未置顶限制为 2
-    const visible = visibleGroupIds(groups, 2, 2)
-    expect([...visible]).toEqual(['p1', 'p2', 'u1', 'u2'])
-    expect(hiddenCount(groups, 2, 2)).toBe(3) // p3, u3, u4 被折叠
-
-    // 置顶设为 0 时表示不限制置顶，全部 3 个置顶常驻，普通项展示前 1 个
-    const unlimitedPinned = visibleGroupIds(groups, 1, 0)
-    expect([...unlimitedPinned]).toEqual(['p1', 'p2', 'p3', 'u1'])
-    expect(hiddenCount(groups, 1, 0)).toBe(3) // u2, u3, u4 被折叠
+    expect([...visibleGroupIds(groups)]).toEqual([...pinnedIds, 'u1', 'u2', 'u3', 'u4', 'u5'])
+    expect(hiddenCount(groups)).toBe(1)
+    expect([...visibleGroupIds(groups, 2)]).toEqual([...pinnedIds, 'u1', 'u2'])
+    expect(hiddenCount(groups, 2)).toBe(4)
+    expect(hiddenCount(pinned)).toBe(0)
   })
 })

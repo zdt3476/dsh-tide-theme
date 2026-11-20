@@ -39,25 +39,17 @@ describe('plugin-config', () => {
     expect(config).toEqual(DEFAULT_SIMPLIFY_CONFIG)
   })
 
-  it('保存部分配置项时正确合并并持久化至 localStorage', () => {
-    const updated = saveSimplifyConfig({ dockStats: false, delegationExpandedDefault: true, sidebarPinnedLimit: 8, sidebarUnpinnedLimit: 3 })
-    expect(updated.dockStats).toBe(false)
-    expect(updated.delegationExpandedDefault).toBe(true)
-    expect(updated.sidebarPinnedLimit).toBe(8)
-    expect(updated.sidebarUnpinnedLimit).toBe(3)
-    expect(updated.themeOverrides).toBe(true)
+  it('忽略已保存的置顶上限，并保留其他配置', () => {
+    const legacy = { dockStats: false, sidebarPinnedLimit: 2, sidebarUnpinnedLimit: 3 }
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(legacy))
 
-    // 重新加载验证持久化
-    const reloaded = loadSimplifyConfig()
-    expect(reloaded.dockStats).toBe(false)
-    expect(reloaded.delegationExpandedDefault).toBe(true)
-    expect(reloaded.sidebarPinnedLimit).toBe(8)
-    expect(reloaded.sidebarUnpinnedLimit).toBe(3)
-    expect(reloaded.themeOverrides).toBe(true)
+    const config = loadSimplifyConfig()
+    expect(config).toEqual({ ...DEFAULT_SIMPLIFY_CONFIG, dockStats: false, sidebarUnpinnedLimit: 3 })
 
-    const raw = JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY)!)
-    expect(raw.dockStats).toBe(false)
-    expect(raw.sidebarPinnedLimit).toBe(8)
+    const updated = saveSimplifyConfig({ delegationExpandedDefault: true })
+    expect(updated).toEqual({ ...config, delegationExpandedDefault: true })
+    expect(loadSimplifyConfig()).toEqual(updated)
+    expect(JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY)!)).toEqual(updated)
   })
 
   it('监听配置变更事件', () => {

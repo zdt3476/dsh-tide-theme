@@ -280,7 +280,7 @@ test('宽度自适应：单行 HUD 在各窗口比例下不换行、不溢出、
   }
 })
 
-test('宽卡片契约：单行 HUD 与卡片同宽对齐，左端起点贴近，材质走 DSH token', async (t) => {
+test('宽卡片契约：紧凑 HUD 居中对齐，内容不越过卡片边界，材质走 DSH token', async (t) => {
   const page = await browser.newPage({ viewport: { width: 1480, height: 720 } })
   t.after(async () => { await page.close() })
   // 直接复现用户截图条件：卡片约 1300px 宽。
@@ -304,7 +304,9 @@ test('宽卡片契约：单行 HUD 与卡片同宽对齐，左端起点贴近，
     }
   })
 
-  assert.equal(data.triggerWidth, 1300, 'HUD 应与卡片同宽')
+  assert.ok(data.triggerWidth > 0 && data.triggerWidth < 1300, 'HUD 应按内容收缩而非拉满卡片')
+  assert.ok(data.triggerLeft >= 24 && data.triggerRight <= 1324, 'HUD 不得越过卡片边界')
+  assert.ok(Math.abs((data.triggerLeft - 24) - (1324 - data.triggerRight)) <= 12, 'HUD 应在卡片中轴居中')
   assert.ok(data.triggerHeight <= 44, `HUD 应保持单行紧凑（实测 ${data.triggerHeight}px）`)
   assert.equal(new Set(data.items.map((item) => item.top)).size, 1, '全部指标同基线')
   assert.equal(data.items.length, 5, '四项指标 + 耗时共五项')

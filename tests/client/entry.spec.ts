@@ -266,6 +266,10 @@ describe('client entry', () => {
       expect(sel).toContain('body[data-dsh-tide-theme]')
     }
 
+    expect(UI_CSS).not.toMatch(/body\[data-dsh-tide-theme\]\s+\[data-row-key\]:hover/)
+    expect(UI_CSS).toMatch(/body\[data-dsh-tide-theme\]\s+\[data-slot=['"]sidebar\.workspaces['"]\]\s+\[data-row-key\]:hover/)
+    expect(UI_CSS).not.toMatch(/\[data-row-key\]\[aria-expanded=['"]true['"]\][^\{]*\{\s*background:\s*var\(--dsw-alias-interactive-bg-active\)/)
+
     // 3. 验证全局基色只来自现有 token 变量，不写第二套硬编码 #0b1420 覆盖
     expect(UI_CSS).not.toMatch(/body\[data-dsh-tide-theme\][^{]*\{\s*background-color:\s*#0b1420/i)
   })
@@ -307,9 +311,24 @@ describe('client entry', () => {
     const fontShorthand = UI_CSS.match(/[^{}]*\{[^{}]*font:\s*var\(--dsw-font-[^{}]*\}/g) ?? []
     expect(fontShorthand, `发现 font 简写：${fontShorthand.join(' | ')}`).toEqual([])
     expect(UI_CSS).toMatch(/--dsw-font-xxxs-11-font-size,\s*11px/)
-    // 排版统一到 DSH 字体族（Inter 优先）。
-    expect(UI_CSS).toMatch(/font-family:\s*Inter,\s*var\(--dsw-font-family\)/)
+    // 排版统一到宿主字体变量与本机系统无衬线回退，不依赖指定字体安装。
+    expect(UI_CSS).toMatch(/font-family:\s*var\(--dsw-font-family,\s*-apple-system,\s*BlinkMacSystemFont,/)
+    expect(UI_CSS).not.toMatch(/font-family:\s*Inter,/)
     // 耗时列必须与四列同构（内联 flex + 有标签），不能退回绝对定位脚注。
     expect(UI_CSS).not.toMatch(/\.dsh-tide-stat-item\.is-duration\s*\{[^}]*position:\s*absolute;/)
+    // 只使用整数像素字号，且不低于最小 11px 字阶。
+    expect(UI_CSS).not.toMatch(/font-size:\s*\d+\.\d+px/)
+    expect(UI_CSS).not.toMatch(/font-size:\s*(?:[0-9]|10)px/)
+    // 编排节点标题遵守 16px/22px 契约，受限供应商列不用整体 opacity 压暗警示语，清理死 CSS。
+    expect(UI_CSS).toMatch(/\[data-dsh-tide-root-title\]\s*\{[^}]*font-size:\s*16px;[^}]*line-height:\s*22px;/)
+    expect(UI_CSS).not.toMatch(/\[data-dsh-tide-column-blocked\]\s*\{[^}]*opacity:/)
+    expect(UI_CSS).not.toContain('[data-dsh-tide-pin-panel]')
+    // 暗色关态下设置卡片绝不能引用未门控的 --dsh-tide-card-* 变量导致透明/白边破版。
+    expect(UI_CSS).not.toMatch(/body\[data-ds-dark-theme\]\s+\.dsh-tide-settings-card\s*\{[^}]*--dsh-tide-card-/)
+    // 错误提示必须使用错误语义色，不能退化为成功绿。
+    expect(UI_CSS).toMatch(/\.dsh-tide-settings-notice\.is-error[\s\S]*?--dsw-alias-state-error-label/)
+    // 看板浮层保留有限模糊，HUD 与委派画布保持不透明且无模糊。
+    expect(UI_CSS).toMatch(/body\[data-dsh-tide-theme\]\s+\.dsh-tide-stats-popover\s*\{[^}]*backdrop-filter:\s*var\(--dsh-tide-glass-blur\)/)
+    expect(UI_CSS).toMatch(/body\[data-dsh-tide-theme\]\s+\.subagent-topology-detail\s*\{[^}]*background:\s*var\(--dsw-alias-bg-layer-1\)/)
   })
 })

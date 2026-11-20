@@ -94,7 +94,7 @@ async function setup(t, { width = 1320, mode = 'dark', running = true } = {}) {
   return page
 }
 
-for (const mode of ['dark','light']) test(`${mode}: 图标比例、指标层级、全宽玻璃 HUD 和四列卡片`, async t => {
+for (const mode of ['dark','light']) test(`${mode}: 图标比例、指标层级、紧凑 HUD 和四列卡片`, async t => {
   const page = await setup(t, {mode})
   const geometry = await page.evaluate(() => {
     const box = s => document.querySelector(s).getBoundingClientRect()
@@ -103,7 +103,7 @@ for (const mode of ['dark','light']) test(`${mode}: 图标比例、指标层级�
       valueSize:parseFloat(getComputedStyle(document.querySelector('.dsh-tide-hud-number')).fontSize),
       columns:getComputedStyle(document.querySelector('.subagent-topology-agents')).gridTemplateColumns.split(' ').length }
   })
-  assert.ok(geometry.hud >= geometry.dock * .95, JSON.stringify(geometry))
+  assert.ok(geometry.hud > 0 && geometry.hud <= geometry.dock, JSON.stringify(geometry))
   assert.ok(geometry.avatar >= 42)
   assert.ok(geometry.hub >= 320)
   // 比例基线：读数固定 13px（DSH TodoPanel 标题规格），字重 500 与 400 标签拉开层级。

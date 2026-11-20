@@ -195,29 +195,41 @@ export function createDockStats(shared: DockShared) {
     const iconClock = h('svg', { viewBox: '0 0 16 16', width: '12', height: '12', fill: 'none', stroke: 'currentColor', strokeWidth: '1.4' },
       h('circle', { cx: '8', cy: '8', r: '6' }),
       h('path', { d: 'M8 4.8V8l2.2 1.6' }))
+    const iconSubagent = h('svg', { viewBox: '0 0 16 16', width: '12', height: '12', fill: 'none', stroke: 'currentColor', strokeWidth: '1.4' },
+      h('rect', { x: '3', y: '4.5', width: '10', height: '7.5', rx: '2' }),
+      h('path', { d: 'M8 2v2.5M6 8.25h.01M10 8.25h.01' }))
 
     // 主读数与单位分层，保留原有文字顺序及数据口径。
-    const number = (value: string | number) => h('strong', { key: 'number', className: 'dsh-tide-hud-number' }, String(value))
-    const unit = (value: string) => h('span', { key: value, className: 'dsh-tide-hud-unit' }, value)
+    const number = (value: string | number, key = 'number') => h('strong', { key, className: 'dsh-tide-hud-number' }, String(value))
+    const unit = (value: string, key = value) => h('span', { key, className: 'dsh-tide-hud-unit' }, value)
+    const renderDurationParts = (text: string) =>
+      text.split(/(\d+(?:\.\d+)?)/).filter((part) => part !== '').map((part, index) =>
+        /^\d+(?:\.\d+)?$/.test(part)
+          ? number(part, `d-${index}`)
+          : unit(part, `d-${index}`)
+      )
+
+    const contextBucket = model.context
+      ? (config.contextColorAlert ? model.context.bucket : 'good')
+      : undefined
 
     // 1. 会话规模
     if (model.activity) {
       items.push(block(
         'activity', 'is-activity',
         '会话规模',
-        iconUser, [number(model.activity.turns), unit(' 轮 '), number(model.activity.steps), unit(' 步')]
+        iconUser, [number(model.activity.turns, 'turns'), unit(' 轮 '), number(model.activity.steps, 'steps'), unit(' 步')]
       ))
     }
 
     // 2. 上下文容量（采用原生 DSH 环形指示器 + 干净数值比率，摒弃粗糙的行内毛毛虫条）
-    if (model.context) {
-      const bucket = config.contextColorAlert ? model.context.bucket : 'good'
+    if (model.context && contextBucket) {
       items.push(block(
-        'context', 'is-context', '上下文容量', createCircleMeter(model.context.usedPercent, bucket),
+        'context', 'is-context', '上下文容量', createCircleMeter(model.context.usedPercent, contextBucket),
         [
           number(formatCompactTokens(model.context.usedTokens)),
           unit(` / ${formatCompactTokens(model.context.contextWindow)} `),
-          h('span', { key: 'percent', className: 'dsh-tide-hud-percent', 'data-bucket': bucket }, `(${model.context.usedPercent}%)`)
+          h('span', { key: 'percent', className: 'dsh-tide-hud-percent', 'data-bucket': contextBucket }, `(${model.context.usedPercent}%)`)
         ],
         {
           'data-dsh-tide-pct': config.contextColorAlert ? model.context.bucket : undefined,
@@ -254,16 +266,16 @@ export function createDockStats(shared: DockShared) {
         'duration', 'is-duration',
         isTurn ? '本轮耗时' : '模型累计',
         iconClock,
-        [number(durationText)],
+        renderDurationParts(durationText),
         { title: isTurn ? '本轮总耗时' : '模型累计总耗时' }
       ))
     }
 
-    // 6. 子代理委派状态（实时线上传播投影）
+    // 6. 子代理委派状态（宽屏 ≥880px 下附显，窄屏自动隐藏避免溢出）
     if (hasSubagents) {
       items.push(block(
-        'subagents', 'is-subagent', '子代理', '🤖',
-        [number(String(subagentEntries.length)), unit(runningSubagents > 0 ? ` (${runningSubagents}跑)` : ' 个')],
+        'subagents', 'is-subagent', '子代理', iconSubagent,
+        [number(String(subagentEntries.length)), unit(runningSubagents > 0 ? ` (${runningSubagents} 运行中)` : ' 个')],
         { title: `${subagentEntries.length} 个子代理（${runningSubagents} 运行中）` }
       ))
     }
@@ -288,7 +300,7 @@ export function createDockStats(shared: DockShared) {
         h('span', { className: 'dsh-tide-stats-popover-title' }, '会话用量与性能看板'),
         model.context ? h('span', {
           className: 'dsh-tide-stats-popover-badge',
-          'data-bucket': model.context.bucket
+          'data-bucket': contextBucket
         }, `${model.context.usedPercent}% 已用`) : null
       ),
 
@@ -320,7 +332,7 @@ export function createDockStats(shared: DockShared) {
             })
           ] : h('div', {
             className: 'dsh-tide-stats-progress-fill',
-            'data-bucket': model.context.bucket,
+            'data-bucket': contextBucket,
             style: { width: `${Math.min(100, Math.max(0, model.context.usedPercent))}%` }
           })
         ),
@@ -348,11 +360,12 @@ export function createDockStats(shared: DockShared) {
           h('span', { className: 'dsh-tide-stats-card-k' }, 'Prompt 缓存命中率'),
           h('strong', {
             className: 'dsh-tide-stats-card-v',
-            'data-dsh-tide-pct': model.cache?.bucket ?? 'bad'
+            ...(model.cache ? { 'data-dsh-tide-pct': model.cache.bucket } : {})
           }, model.cache ? `${model.cache.percent}%` : '暂无数据'),
           h('div', { className: 'dsh-tide-hud-mini-track' },
             h('div', {
               className: 'dsh-tide-hud-mini-fill is-cache',
+              ...(model.cache ? { 'data-bucket': model.cache.bucket } : {}),
               style: { width: `${model.cache?.percent ?? 0}%` }
             })
           ),
